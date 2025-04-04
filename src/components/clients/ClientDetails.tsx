@@ -122,17 +122,16 @@ type Payment = {
 };
 
 type ClientDetailsProps = {
-  clientId: string;
-  isAdmin: boolean;
-  userId: string;
+  client: Client;
+  isAdmin?: boolean;
+  userId?: string;
 };
 
 export default function ClientDetails({
-  clientId,
-  isAdmin,
-  userId,
+  client,
+  isAdmin = false,
+  userId = "",
 }: ClientDetailsProps) {
-  const [client, setClient] = useState<Client | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -169,52 +168,28 @@ export default function ClientDetails({
   const router = useRouter();
 
   useEffect(() => {
-    fetchClient();
     fetchPlans();
     fetchLoginHistory();
     fetchPayments();
-  }, [clientId]);
 
-  const fetchClient = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("clients")
-        .select(
-          `
-          *,
-          plans:plan_id (*)
-        `,
-        )
-        .eq("id", clientId)
-        .single();
-
-      if (error) throw error;
-      setClient(data);
-
-      // Set form values
-      if (data) {
-        setEditClientName(data.name);
-        setEditClientEmail(data.email);
-        setEditClientPhone(data.phone || "");
-        setEditClientDocument(data.document || "");
-        setEditClientAddress(data.address || "");
-        setEditClientCity(data.city || "");
-        setEditClientState(data.state || "");
-        setEditClientPostalCode(data.postal_code || "");
-        setEditClientStatus(data.status);
-        setEditClientPaymentStatus(data.payment_status);
-        setEditClientPlanId(data.plan_id || "");
-        setNewPlanId(data.plan_id || "");
-        setEditClientNotes(data.notes || "");
-      }
-    } catch (error: any) {
-      setError(error.message);
-      console.error("Error fetching client:", error);
-    } finally {
+    // Set form values
+    if (client) {
+      setEditClientName(client.name);
+      setEditClientEmail(client.email);
+      setEditClientPhone(client.phone || "");
+      setEditClientDocument(client.document || "");
+      setEditClientAddress(client.address || "");
+      setEditClientCity(client.city || "");
+      setEditClientState(client.state || "");
+      setEditClientPostalCode(client.postal_code || "");
+      setEditClientStatus(client.status);
+      setEditClientPaymentStatus(client.payment_status);
+      setEditClientPlanId(client.plan_id || "");
+      setNewPlanId(client.plan_id || "");
+      setEditClientNotes(client.notes || "");
       setLoading(false);
     }
-  };
+  }, [client]);
 
   const fetchPlans = async () => {
     try {
@@ -236,7 +211,7 @@ export default function ClientDetails({
       const { data, error } = await supabase
         .from("client_login_history")
         .select("*")
-        .eq("client_id", clientId)
+        .eq("client_id", client.id)
         .order("login_at", { ascending: false });
 
       if (error) throw error;
@@ -256,7 +231,7 @@ export default function ClientDetails({
           plans:plan_id (name)
         `,
         )
-        .eq("client_id", clientId)
+        .eq("client_id", client.id)
         .order("due_date", { ascending: false });
 
       if (error) throw error;
@@ -294,13 +269,13 @@ export default function ClientDetails({
           notes: editClientNotes || null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", clientId);
+        .eq("id", client.id);
 
       if (error) throw error;
 
       setSuccess("Cliente atualizado com sucesso");
       setIsEditDialogOpen(false);
-      fetchClient();
+      router.refresh();
     } catch (error: any) {
       setError(error.message);
       console.error("Error updating client:", error);
@@ -319,7 +294,7 @@ export default function ClientDetails({
           plan_id: newPlanId || null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", clientId);
+        .eq("id", client.id);
 
       if (error) throw error;
 
@@ -333,7 +308,7 @@ export default function ClientDetails({
           const { error: paymentError } = await supabase
             .from("client_payments")
             .insert({
-              client_id: clientId,
+              client_id: client.id,
               plan_id: newPlanId,
               amount: selectedPlan.price,
               due_date: dueDate.toISOString(),
@@ -348,7 +323,7 @@ export default function ClientDetails({
 
       setSuccess("Plano atualizado com sucesso");
       setIsChangePlanDialogOpen(false);
-      fetchClient();
+      router.refresh();
       fetchPayments();
     } catch (error: any) {
       setError(error.message);
@@ -368,12 +343,12 @@ export default function ClientDetails({
           is_blocked: block,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", clientId);
+        .eq("id", client.id);
 
       if (error) throw error;
 
       setSuccess(`Cliente ${block ? "bloqueado" : "desbloqueado"} com sucesso`);
-      fetchClient();
+      router.refresh();
     } catch (error: any) {
       setError(error.message);
       console.error("Error updating client block status:", error);
@@ -398,8 +373,8 @@ export default function ClientDetails({
 
       // Create payment
       const { error } = await supabase.from("client_payments").insert({
-        client_id: clientId,
-        plan_id: client?.plan_id || null,
+        client_id: client.id,
+        plan_id: client.plan_id || null,
         amount,
         due_date: new Date(newPaymentDueDate).toISOString(),
         status: newPaymentStatus,
@@ -447,14 +422,14 @@ export default function ClientDetails({
             payment_status: status,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", clientId);
+          .eq("id", client.id);
 
         if (clientError) throw clientError;
       }
 
       setSuccess("Status do pagamento atualizado com sucesso");
       fetchPayments();
-      fetchClient();
+      router.refresh();
     } catch (error: any) {
       setError(error.message);
       console.error("Error updating payment status:", error);
@@ -550,26 +525,6 @@ export default function ClientDetails({
     );
   }
 
-  if (!client) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Cliente não encontrado</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>
-            O cliente solicitado não foi encontrado ou você não tem permissão
-            para acessá-lo.
-          </p>
-          <Button className="mt-4" onClick={() => router.push("/clients")}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para a lista de
-            clientes
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <>
       {error && <FormMessage type="error" message={error} className="mb-4" />}
@@ -579,9 +534,6 @@ export default function ClientDetails({
 
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push("/clients")}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-          </Button>
           <h1 className="text-2xl font-semibold">{client.name}</h1>
           {client.is_blocked && (
             <Badge
@@ -592,25 +544,27 @@ export default function ClientDetails({
             </Badge>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={client.is_blocked ? "outline" : "destructive"}
-            onClick={() => handleBlockClient(!client.is_blocked)}
-          >
-            {client.is_blocked ? (
-              <>
-                <UserCheck className="mr-2 h-4 w-4" /> Desbloquear
-              </>
-            ) : (
-              <>
-                <Ban className="mr-2 h-4 w-4" /> Bloquear
-              </>
-            )}
-          </Button>
-          <Button onClick={() => setIsEditDialogOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" /> Editar
-          </Button>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Button
+              variant={client.is_blocked ? "outline" : "destructive"}
+              onClick={() => handleBlockClient(!client.is_blocked)}
+            >
+              {client.is_blocked ? (
+                <>
+                  <UserCheck className="mr-2 h-4 w-4" /> Desbloquear
+                </>
+              ) : (
+                <>
+                  <Ban className="mr-2 h-4 w-4" /> Bloquear
+                </>
+              )}
+            </Button>
+            <Button onClick={() => setIsEditDialogOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" /> Editar
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -697,20 +651,22 @@ export default function ClientDetails({
               </div>
             )}
           </CardContent>
-          <CardFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => {
-                setNewPlanId(client.plan_id || "");
-                setIsChangePlanDialogOpen(true);
-              }}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              {client.plans ? "Alterar Plano" : "Atribuir Plano"}
-            </Button>
-          </CardFooter>
+          {isAdmin && (
+            <CardFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setNewPlanId(client.plan_id || "");
+                  setIsChangePlanDialogOpen(true);
+                }}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                {client.plans ? "Alterar Plano" : "Atribuir Plano"}
+              </Button>
+            </CardFooter>
+          )}
         </Card>
 
         <Card>
@@ -752,95 +708,99 @@ export default function ClientDetails({
       </div>
 
       {/* Change Plan Dialog */}
-      <Dialog
-        open={isChangePlanDialogOpen}
-        onOpenChange={setIsChangePlanDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {client.plans ? "Alterar Plano" : "Atribuir Plano"}
-            </DialogTitle>
-            <DialogDescription>
-              Selecione um plano para este cliente. Um novo registro de
-              pagamento será criado automaticamente.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="planSelect">Plano</Label>
-                <Select value={newPlanId} onValueChange={setNewPlanId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um plano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sem plano</SelectItem>
-                    {plans.map((plan) => (
-                      <SelectItem key={plan.id} value={plan.id}>
-                        {plan.name} - R$ {plan.price.toFixed(2)}/
-                        {plan.billing_cycle === "monthly"
-                          ? "mês"
-                          : plan.billing_cycle === "annual"
-                            ? "ano"
-                            : plan.billing_cycle}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {newPlanId && (
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <h3 className="font-medium text-sm">
-                    Detalhes do Plano Selecionado
-                  </h3>
-                  {(() => {
-                    const selectedPlan = plans.find((p) => p.id === newPlanId);
-                    if (!selectedPlan) return null;
-
-                    return (
-                      <div className="mt-2 space-y-1 text-sm">
-                        <p>
-                          <span className="font-medium">Nome:</span>{" "}
-                          {selectedPlan.name}
-                        </p>
-                        <p>
-                          <span className="font-medium">Valor:</span> R${" "}
-                          {selectedPlan.price.toFixed(2)}
-                        </p>
-                        <p>
-                          <span className="font-medium">Ciclo:</span>{" "}
-                          {getBillingCycleLabel(selectedPlan.billing_cycle)}
-                        </p>
-                        {selectedPlan.description && (
-                          <p>
-                            <span className="font-medium">Descrição:</span>{" "}
-                            {selectedPlan.description}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })()}
+      {isAdmin && (
+        <Dialog
+          open={isChangePlanDialogOpen}
+          onOpenChange={setIsChangePlanDialogOpen}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {client.plans ? "Alterar Plano" : "Atribuir Plano"}
+              </DialogTitle>
+              <DialogDescription>
+                Selecione um plano para este cliente. Um novo registro de
+                pagamento será criado automaticamente.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="planSelect">Plano</Label>
+                  <Select value={newPlanId} onValueChange={setNewPlanId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um plano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sem plano</SelectItem>
+                      {plans.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.name} - R$ {plan.price.toFixed(2)}/
+                          {plan.billing_cycle === "monthly"
+                            ? "mês"
+                            : plan.billing_cycle === "annual"
+                              ? "ano"
+                              : plan.billing_cycle}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsChangePlanDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleChangePlan}>
-              {client.plans ? "Alterar Plano" : "Atribuir Plano"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Rest of the component remains the same */}
+                {newPlanId && (
+                  <div className="bg-blue-50 p-3 rounded-md">
+                    <h3 className="font-medium text-sm">
+                      Detalhes do Plano Selecionado
+                    </h3>
+                    {(() => {
+                      const selectedPlan = plans.find(
+                        (p) => p.id === newPlanId,
+                      );
+                      if (!selectedPlan) return null;
+
+                      return (
+                        <div className="mt-2 space-y-1 text-sm">
+                          <p>
+                            <span className="font-medium">Nome:</span>{" "}
+                            {selectedPlan.name}
+                          </p>
+                          <p>
+                            <span className="font-medium">Valor:</span> R${" "}
+                            {selectedPlan.price.toFixed(2)}
+                          </p>
+                          <p>
+                            <span className="font-medium">Ciclo:</span>{" "}
+                            {getBillingCycleLabel(selectedPlan.billing_cycle)}
+                          </p>
+                          {selectedPlan.description && (
+                            <p>
+                              <span className="font-medium">Descrição:</span>{" "}
+                              {selectedPlan.description}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsChangePlanDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleChangePlan}>
+                {client.plans ? "Alterar Plano" : "Atribuir Plano"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Add more sections as needed */}
     </>
   );
 }
