@@ -1,0 +1,208 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "../../../../../supabase/server";
+
+/**
+ * @swagger
+ * /reports/contracts:
+ *   get:
+ *     summary: Obtém relatório de contratos
+ *     description: Retorna dados de contratos para relatórios com base no período selecionado. Administradores podem ver todos os contratos, enquanto usuários regulares só podem ver seus próprios contratos.
+ *     tags:
+ *       - reports
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data inicial do período (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Data final do período (YYYY-MM-DD)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [draft, pending, signed]
+ *         description: Filtrar por status do contrato
+ *     responses:
+ *       200:
+ *         description: Dados do relatório de contratos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contracts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       client_name:
+ *                         type: string
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     signed:
+ *                       type: integer
+ *                     pending:
+ *                       type: integer
+ *                     draft:
+ *                       type: integer
+ *                 monthly:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       month:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+
+    // Check if user is authenticated
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if the user is an admin
+    const { data: userRoles } = await supabase
+      .from("user_roles")
+      .select(
+        `
+        role_id,
+        roles(name)
+      `,
+      )
+      .eq("user_id", user.id);
+
+    const isSuperAdmin =
+      userRoles && userRoles.some((ur) => ur.roles?.name === "super_admin");
+
+    // Get query parameters
+    const url = new URL(request.url);
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
+    const status = url.searchParams.get("status");
+
+    // Base query
+    let query = supabase.from("contracts").select("*");
+
+    // Apply user filter if not super admin
+    if (!isSuperAdmin) {
+      query = query.eq("user_id", user.id);
+    }
+
+    // Apply date filters if provided
+    if (startDate) {
+      query = query.gte("created_at", `${startDate}T00:00:00.000Z`);
+    }
+
+    if (endDate) {
+      query = query.lte("created_at", `${endDate}T23:59:59.999Z`);
+    }
+
+    // Apply status filter if provided
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    // Order by created_at descending
+    query = query.order("created_at", { ascending: false });
+
+    const { data: contracts, error } = await query;
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Calculate summary statistics
+    const total = contracts.length;
+    const signed = contracts.filter((c) => c.status === "signed").length;
+    const pending = contracts.filter((c) => c.status === "pending").length;
+    const draft = contracts.filter((c) => c.status === "draft").length;
+
+    // Calculate monthly statistics
+    const monthlyData = {};
+    contracts.forEach((contract) => {
+      if (contract.created_at) {
+        const date = new Date(contract.created_at);
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const monthName = date.toLocaleString("default", { month: "short" });
+
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = {
+            month: monthName,
+            count: 0,
+            year: date.getFullYear(),
+            monthNum: date.getMonth() + 1,
+          };
+        }
+        monthlyData[monthYear].count += 1;
+      }
+    });
+
+    // Convert to array and sort by date
+    const monthly = Object.values(monthlyData)
+      .sort((a: any, b: any) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.monthNum - b.monthNum;
+      })
+      .map((item: any) => ({
+        month: item.month,
+        count: item.count,
+      }));
+
+    return NextResponse.json({
+      contracts,
+      summary: {
+        total,
+        signed,
+        pending,
+        draft,
+      },
+      monthly,
+    });
+  } catch (error: any) {
+    console.error("Error fetching contracts report:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch contracts report" },
+      { status: 500 },
+    );
+  }
+}
