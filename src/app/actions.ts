@@ -465,6 +465,31 @@ export const uploadContractTemplateAction = async (formData: FormData) => {
       );
     }
 
+    // Create notification for admins
+    try {
+      const { data: currentUser } = await supabase.auth.getUser();
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", currentUser.user?.id)
+        .single();
+
+      const userName = userData?.full_name || "A user";
+
+      // Import dynamically to avoid circular dependencies
+      const { createAdminNotifications } = await import(
+        "@/utils/notifications"
+      );
+      await createAdminNotifications(
+        "New Contract Template",
+        `${userName} uploaded a new contract template: ${name}`,
+        `/contracts/${template.id}/edit`,
+      );
+    } catch (notifyError) {
+      console.error("Error creating notification:", notifyError);
+      // Don't block the main flow if notification fails
+    }
+
     return redirect(`/contracts/${template.id}/edit`);
   } catch (err) {
     console.error("Error in template upload process:", err);
@@ -575,6 +600,33 @@ export const updateContractTemplateAction = async (formData: FormData) => {
         `/contracts/${templateId}/edit`,
         "Failed to update template information",
       );
+    }
+
+    // Create notification for admins
+    try {
+      const { data: currentUser } = await supabase.auth.getUser();
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", currentUser.user?.id)
+        .single();
+
+      const userName = userData?.full_name || "A user";
+      const fileUpdated =
+        file && file.size > 0 ? " and uploaded a new file" : "";
+
+      // Import dynamically to avoid circular dependencies
+      const { createAdminNotifications } = await import(
+        "@/utils/notifications"
+      );
+      await createAdminNotifications(
+        "Contract Template Updated",
+        `${userName} updated the contract template: ${name}${fileUpdated}`,
+        `/contracts/${templateId}/edit`,
+      );
+    } catch (notifyError) {
+      console.error("Error creating notification:", notifyError);
+      // Don't block the main flow if notification fails
     }
 
     return encodedRedirect(

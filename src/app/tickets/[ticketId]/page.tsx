@@ -8,7 +8,7 @@ import TicketTimeline from "@/components/tickets/TicketTimeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Clock, FileText, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, FileText, MessageSquare, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function TicketDetailsPage({
