@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../../supabase/server";
+import AttachmentList from "@/components/contracts/AttachmentList";
+import CommentSection from "@/components/contracts/CommentSection";
+import ModificationHistory from "@/components/contracts/ModificationHistory";
 
 export default async function ContractDetailsPage({
   params,
@@ -118,6 +121,9 @@ export default async function ContractDetailsPage({
               <TabsTrigger value="details">Detalhes</TabsTrigger>
               <TabsTrigger value="client">Dados do Cliente</TabsTrigger>
               <TabsTrigger value="logs">Logs de Assinatura</TabsTrigger>
+              <TabsTrigger value="attachments">Anexos</TabsTrigger>
+              <TabsTrigger value="comments">Comentários</TabsTrigger>
+              <TabsTrigger value="history">Histórico</TabsTrigger>
               <TabsTrigger value="preview">Prévia do Contrato</TabsTrigger>
             </TabsList>
 
@@ -346,6 +352,18 @@ export default async function ContractDetailsPage({
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="attachments">
+              <AttachmentList contractId={params.id} />
+            </TabsContent>
+
+            <TabsContent value="comments">
+              <CommentSection contractId={params.id} />
+            </TabsContent>
+
+            <TabsContent value="history">
+              <ModificationHistory contractId={params.id} />
             </TabsContent>
 
             <TabsContent value="preview">
