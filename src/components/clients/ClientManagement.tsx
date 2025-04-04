@@ -101,6 +101,7 @@ export default function ClientManagement({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("all");
+  const [planFilter, setPlanFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("all");
 
   // Form states
@@ -366,6 +367,12 @@ export default function ClientManagement({
       paymentStatusFilter === "all" ||
       client.payment_status === paymentStatusFilter;
 
+    // Plan filter
+    const matchesPlan =
+      planFilter === "all" ||
+      (planFilter === "no_plan" && !client.plan_id) ||
+      client.plan_id === planFilter;
+
     // Tab filter
     const matchesTab =
       activeTab === "all" ||
@@ -374,7 +381,13 @@ export default function ClientManagement({
       (activeTab === "overdue" && client.payment_status === "overdue") ||
       (activeTab === "blocked" && client.is_blocked);
 
-    return matchesSearch && matchesStatus && matchesPaymentStatus && matchesTab;
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesPaymentStatus &&
+      matchesPlan &&
+      matchesTab
+    );
   });
 
   const exportToCSV = () => {
@@ -719,6 +732,24 @@ export default function ClientManagement({
                       <SelectItem value="paid">Pago</SelectItem>
                       <SelectItem value="pending">Pendente</SelectItem>
                       <SelectItem value="overdue">Inadimplente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Plano:</span>
+                  <Select value={planFilter} onValueChange={setPlanFilter}>
+                    <SelectTrigger className="h-8 w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os planos</SelectItem>
+                      <SelectItem value="no_plan">Sem plano</SelectItem>
+                      {plans.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
