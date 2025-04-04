@@ -48,11 +48,15 @@ import {
   Shield,
   Tag,
   Trash2,
+  KeyRound,
+  QrCode,
 } from "lucide-react";
 import FormMessage from "@/components/form-message";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { formatFileSize } from "@/utils/utils";
+import TwoFactorSetup from "./TwoFactorSetup";
+import TwoFactorVerify from "./TwoFactorVerify";
 
 // Types
 interface VaultDocument {
@@ -88,6 +92,14 @@ interface DocumentAccessLog {
   user_agent?: string;
 }
 
+interface UserData {
+  id: string;
+  two_factor_enabled?: boolean;
+  two_factor_secret?: string;
+  vault_storage_used?: number;
+  plan_id?: string;
+}
+
 export default function VaultDocuments() {
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +115,14 @@ export default function VaultDocuments() {
   const [storageUsed, setStorageUsed] = useState(0);
   const [activeTab, setActiveTab] = useState("all");
   const [folders, setFolders] = useState<string[]>([]);
+  
+  // 2FA states
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [is2FAVerified, setIs2FAVerified] = useState(false);
+  const [is2FASetupOpen, setIs2FASetupOpen] = useState(false);
+  const [is2FAVerifyOpen, setIs2FAVerifyOpen] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [vaultLocked, setVaultLocked] = useState(true);
 
   // Form states
   const [newDocumentName, setNewDocumentName] = useState("");
@@ -117,9 +137,14 @@ export default function VaultDocuments() {
   const supabase = createClient();
 
   useEffect(() => {
-    fetchDocuments();
-    fetchUserPlan();
+    fetchUserData();
   }, []);
+  
+  useEffect(() => {
+    if (!vaultLocked) {
+      fetchDocuments();
+    }
+  }, [vaultLocked]);
   
   useEffect(() => {
     if (documents.length > 0) {
@@ -158,22 +183,37 @@ export default function VaultDocuments() {
     }
   };
 
-  const fetchUserPlan = async () => {
+  const fetchUserData = async () => {
     try {
+      setLoading(true);
       // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get user's plan
+      // Get user's data including 2FA status
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("plan_id")
+        .select("id, plan_id, two_factor_enabled, vault_storage_used")
         .eq("id", user.id)
         .single();
 
       if (userError) throw userError;
+      
+      setUserData(userData);
+      setIs2FAEnabled(userData?.two_factor_enabled || false);
+      
+      // If 2FA is not enabled, unlock the vault immediately
+      if (!userData?.two_factor_enabled) {
+        setVaultLocked(false);
+        setIs2FAVerified(true);
+      } else {
+        // If 2FA is enabled, keep the vault locked until verification
+        setVaultLocked(true);
+        setIs2FAVerified(false);
+        setIs2FAVerifyOpen(true);
+      }
 
       if (userData?.plan_id) {
         const { data: planData, error: planError } = await supabase
@@ -188,8 +228,16 @@ export default function VaultDocuments() {
         // Default plan limits if no plan is assigned
         setUserPlan({ vault_storage_limit: 104857600 }); // 100MB
       }
+      
+      // Set storage used from user data
+      if (userData?.vault_storage_used) {
+        setStorageUsed(userData.vault_storage_used);
+      }
     } catch (error: any) {
-      console.error("Error fetching user plan:", error);
+      console.error("Error fetching user data:", error);
+      setError("Erro ao carregar dados do usuário. Por favor, recarregue a página.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -449,11 +497,53 @@ export default function VaultDocuments() {
       {success && (
         <FormMessage type="success" message={success} className="mb-4" />
       )}
+      
+      {/* 2FA Setup Dialog */}
+      <TwoFactorSetup
+        isOpen={is2FASetupOpen}
+        onClose={() => setIs2FASetupOpen(false)}
+        onSuccess={() => {
+          setIs2FAEnabled(true);
+          setSuccess("Autenticação de dois fatores ativada com sucesso!");
+          fetchUserData();
+        }}
+        is2FAEnabled={is2FAEnabled}
+      />
+      
+      {/* 2FA Verification Dialog */}
+      <TwoFactorVerify
+        isOpen={is2FAVerifyOpen}
+        onClose={() => {
+          setIs2FAVerifyOpen(false);
+          if (!is2FAVerified) {
+            // If user cancels verification, redirect or show message
+            setError("Verificação de dois fatores necessária para acessar o cofre.");
+          }
+        }}
+        onSuccess={() => {
+          setIs2FAVerified(true);
+          setVaultLocked(false);
+          setIs2FAVerifyOpen(false);
+        }}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Cofre de Documentos</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {vaultLocked ? (
+                <Lock className="h-5 w-5 text-amber-500" />
+              ) : (
+                <Shield className="h-5 w-5 text-green-500" />
+              )}
+              Cofre de Documentos
+              {is2FAEnabled && (
+                <Badge className="ml-2 bg-blue-100 text-blue-800 flex items-center gap-1">
+                  <KeyRound className="h-3 w-3" />
+                  2FA Ativo
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>
               Armazene documentos importantes com segurança
             </CardDescription>
@@ -462,31 +552,45 @@ export default function VaultDocuments() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsTimelineView(!isTimelineView)}
+              onClick={() => setIs2FASetupOpen(true)}
               className="flex items-center gap-1"
             >
-              {isTimelineView ? (
-                <>
-                  <FileText className="h-4 w-4" />
-                  <span>Visualização em Lista</span>
-                </>
-              ) : (
-                <>
-                  <History className="h-4 w-4" />
-                  <span>Visualização em Timeline</span>
-                </>
-              )}
+              <QrCode className="h-4 w-4" />
+              <span>{is2FAEnabled ? "Gerenciar 2FA" : "Configurar 2FA"}</span>
             </Button>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
+            
+            {!vaultLocked && (
+              <>
                 <Button
-                  className="flex items-center gap-2"
-                  disabled={!userPlan || getStoragePercentage() >= 100}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTimelineView(!isTimelineView)}
+                  className="flex items-center gap-1"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>Adicionar Documento</span>
+                  {isTimelineView ? (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      <span>Visualização em Lista</span>
+                    </>
+                  ) : (
+                    <>
+                      <History className="h-4 w-4" />
+                      <span>Visualização em Timeline</span>
+                    </>
+                  )}
                 </Button>
-              </DialogTrigger>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      className="flex items-center gap-2"
+                      disabled={!userPlan || getStoragePercentage() >= 100}
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Adicionar Documento</span>
+                    </Button>
+                  </DialogTrigger>
+              </>
+            )}
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Documento</DialogTitle>
@@ -582,186 +686,208 @@ export default function VaultDocuments() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-6">
-            <h3 className="text-sm font-medium mb-2">Uso de Armazenamento</h3>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm">
-                Utilizado: {formatFileSize(storageUsed)}
-              </span>
-              <span className="text-sm">
-                Limite: {formatFileSize(userPlan?.vault_storage_limit || 0)}
-              </span>
-            </div>
-            <Progress value={getStoragePercentage()} className="h-2" />
-          </div>
-
-          <Tabs defaultValue="all" className="mb-6">
-            <TabsList>
-              <TabsTrigger value="all" onClick={() => setActiveTab("all")}>Todos</TabsTrigger>
-              <TabsTrigger value="folders" onClick={() => setActiveTab("folders")}>Pastas</TabsTrigger>
-              {folders.length > 0 && folders.slice(0, 3).map((folder, index) => (
-                <TabsTrigger 
-                  key={index} 
-                  value={folder || ""}
-                  onClick={() => setActiveTab(folder || "")}
+          {vaultLocked ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="bg-amber-50 p-6 rounded-lg border border-amber-100 max-w-md text-center">
+                <Lock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-amber-800 mb-2">Cofre Bloqueado</h2>
+                <p className="text-amber-700 mb-6">
+                  Para acessar seus documentos, é necessário verificar sua identidade com autenticação de dois fatores.
+                </p>
+                <Button 
+                  onClick={() => setIs2FAVerifyOpen(true)}
+                  className="w-full flex items-center justify-center gap-2"
                 >
-                  {folder?.split('/').pop() || "Sem pasta"}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                  <Shield className="h-4 w-4" />
+                  Verificar Identidade
+                </Button>
+              </div>
+            </div>
+          ) : (
+          <div>
+            <div className="mb-6">
+              <h3 className="text-sm font-medium mb-2">Uso de Armazenamento</h3>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm">
+                  Utilizado: {formatFileSize(storageUsed)}
+                </span>
+                <span className="text-sm">
+                  Limite: {formatFileSize(userPlan?.vault_storage_limit || 0)}
+                </span>
+              </div>
+              <Progress value={getStoragePercentage()} className="h-2" />
+            </div>
 
-          {isTimelineView ? (
-            <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:w-0.5 before:-translate-x-1/2 before:bg-gray-200 before:content-['']">
-              {documents
-                .filter(doc => activeTab === "all" || doc.folder_path === activeTab)
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .map((document, index) => (
-                  <div key={document.id} className="relative pl-6">
-                    <div className="flex items-center">
-                      <div className="absolute left-0 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow border border-gray-200">
-                        <FileText className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div className="grow ml-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium">{document.name}</h3>
-                          <div className="flex items-center gap-1">
-                            {document.is_critical && (
-                              <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1">
-                                <Lock className="h-3 w-3" />
-                                Crítico
-                              </Badge>
-                            )}
-                            {document.document_type && (
-                              <Badge className="bg-blue-100 text-blue-800">
-                                {document.document_type}
-                              </Badge>
-                            )}
-                          </div>
+            <Tabs defaultValue="all" className="mb-6">
+              <TabsList>
+                <TabsTrigger value="all" onClick={() => setActiveTab("all")}>Todos</TabsTrigger>
+                <TabsTrigger value="folders" onClick={() => setActiveTab("folders")}>Pastas</TabsTrigger>
+                {folders.length > 0 && folders.slice(0, 3).map((folder, index) => (
+                  <TabsTrigger 
+                    key={index} 
+                    value={folder || ""}
+                    onClick={() => setActiveTab(folder || "")}
+                  >
+                    {folder?.split('/').pop() || "Sem pasta"}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            {isTimelineView ? (
+              <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:w-0.5 before:-translate-x-1/2 before:bg-gray-200 before:content-['']">
+                {documents
+                  .filter(doc => activeTab === "all" || doc.folder_path === activeTab)
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((document, index) => (
+                    <div key={document.id} className="relative pl-6">
+                      <div className="flex items-center">
+                        <div className="absolute left-0 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow border border-gray-200">
+                          <FileText className="h-5 w-5 text-blue-500" />
                         </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {document.description || "Sem descrição"}
-                        </p>
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="text-sm text-gray-500">
-                            {new Date(document.created_at).toLocaleDateString()} às {new Date(document.created_at).toLocaleTimeString()}
+                        <div className="grow ml-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-medium">{document.name}</h3>
+                            <div className="flex items-center gap-1">
+                              {document.is_critical && (
+                                <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1">
+                                  <Lock className="h-3 w-3" />
+                                  Crítico
+                                </Badge>
+                              )}
+                              {document.document_type && (
+                                <Badge className="bg-blue-100 text-blue-800">
+                                  {document.document_type}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDetailsDialog(document)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDownloadDocument(document)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDeleteDialog(document)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {document.description || "Sem descrição"}
+                          </p>
+                          <div className="flex items-center justify-between mt-3">
+                            <div className="text-sm text-gray-500">
+                              {new Date(document.created_at).toLocaleDateString()} às {new Date(document.created_at).toLocaleTimeString()}
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openDetailsDialog(document)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDownloadDocument(document)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openDeleteDialog(document)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Tamanho</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Data de Upload</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.length === 0 ? (
+                  ))}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-4 text-gray-500"
-                    >
-                      Nenhum documento encontrado no cofre
-                    </TableCell>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Tamanho</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data de Upload</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ) : (
-                  documents
-                    .filter(doc => activeTab === "all" || doc.folder_path === activeTab)
-                    .map((document) => (
-                      <TableRow key={document.id}>
-                        <TableCell className="font-medium flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          {document.name}
-                          {document.document_type && (
-                            <Badge className="ml-2 bg-blue-100 text-blue-800">
-                              {document.document_type}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {document.file_type || "Desconhecido"}
-                        </TableCell>
-                        <TableCell>{formatFileSize(document.file_size)}</TableCell>
-                        <TableCell>
-                          {document.is_critical ? (
-                            <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1 w-fit">
-                              <Lock className="h-3 w-3" />
-                              Crítico
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-green-100 text-green-800 w-fit">
-                              Seguro
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(document.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDetailsDialog(document)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadDocument(document)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDeleteDialog(document)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {documents.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center py-4 text-gray-500"
+                      >
+                        Nenhum documento encontrado no cofre
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    documents
+                      .filter(doc => activeTab === "all" || doc.folder_path === activeTab)
+                      .map((document) => (
+                        <TableRow key={document.id}>
+                          <TableCell className="font-medium flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            {document.name}
+                            {document.document_type && (
+                              <Badge className="ml-2 bg-blue-100 text-blue-800">
+                                {document.document_type}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {document.file_type || "Desconhecido"}
+                          </TableCell>
+                          <TableCell>{formatFileSize(document.file_size)}</TableCell>
+                          <TableCell>
+                            {document.is_critical ? (
+                              <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1 w-fit">
+                                <Lock className="h-3 w-3" />
+                                Crítico
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-800 w-fit">
+                                Seguro
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(document.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDetailsDialog(document)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadDocument(document)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDeleteDialog(document)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
           )}
         </CardContent>
       </Card>
