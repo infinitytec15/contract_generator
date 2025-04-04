@@ -12,9 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileUpload, Upload, Tag, Save } from "lucide-react";
+import { FileUpload, Upload, Tag, Save, Calendar, Bell } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../supabase/server";
+import { uploadContractTemplateAction } from "@/app/actions";
 
 export default async function AddContractPage() {
   const supabase = await createClient();
@@ -42,7 +43,12 @@ export default async function AddContractPage() {
               <CardTitle>Informações do Contrato</CardTitle>
             </CardHeader>
             <CardContent>
-              <form className="space-y-6">
+              <form
+                action={uploadContractTemplateAction}
+                method="post"
+                encType="multipart/form-data"
+                className="space-y-6"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome do Contrato</Label>
@@ -123,14 +129,146 @@ export default async function AddContractPage() {
                   <p className="text-sm text-gray-500 mb-4">
                     Suporta PDF ou DOCX (máx. 10MB)
                   </p>
+                  <Input
+                    id="file"
+                    name="file"
+                    type="file"
+                    accept=".pdf,.docx"
+                    className="hidden"
+                  />
                   <Button
                     type="button"
                     variant="outline"
                     className="flex items-center gap-2"
+                    onClick={() => document.getElementById("file")?.click()}
                   >
                     <Upload className="h-4 w-4" />
                     <span>Selecionar Arquivo</span>
                   </Button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-medium">Gestão de Prazos</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="effective_date">
+                        Data de Início de Vigência
+                      </Label>
+                      <Input
+                        id="effective_date"
+                        name="effective_date"
+                        type="date"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="termination_date">
+                        Data de Término de Vigência
+                      </Label>
+                      <Input
+                        id="termination_date"
+                        name="termination_date"
+                        type="date"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="renewal_date">Data de Renovação</Label>
+                      <Input
+                        id="renewal_date"
+                        name="renewal_date"
+                        type="date"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="adjustment_date">Data de Reajuste</Label>
+                      <Input
+                        id="adjustment_date"
+                        name="adjustment_date"
+                        type="date"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Bell className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-medium">Configuração de Alertas</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="alert_days_before">
+                        Dias de Antecedência para Alertas
+                      </Label>
+                      <Input
+                        id="alert_days_before"
+                        name="alert_days_before"
+                        type="number"
+                        min="1"
+                        max="90"
+                        defaultValue="7"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Tipos de Alertas</Label>
+                      <div className="flex flex-col gap-2 pt-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="alert_email"
+                            name="alert_email"
+                            type="checkbox"
+                            className="h-4 w-4"
+                            defaultChecked
+                          />
+                          <Label
+                            htmlFor="alert_email"
+                            className="text-sm font-normal"
+                          >
+                            Email
+                          </Label>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="alert_sms"
+                            name="alert_sms"
+                            type="checkbox"
+                            className="h-4 w-4"
+                          />
+                          <Label
+                            htmlFor="alert_sms"
+                            className="text-sm font-normal"
+                          >
+                            SMS
+                          </Label>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="alert_system"
+                            name="alert_system"
+                            type="checkbox"
+                            className="h-4 w-4"
+                            defaultChecked
+                          />
+                          <Label
+                            htmlFor="alert_system"
+                            className="text-sm font-normal"
+                          >
+                            Notificação no Sistema
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

@@ -392,6 +392,18 @@ export const uploadContractTemplateAction = async (formData: FormData) => {
   const description = formData.get("description")?.toString() || "";
   const file = formData.get("file") as File;
 
+  // Get date fields
+  const effectiveDate = formData.get("effective_date")?.toString() || null;
+  const terminationDate = formData.get("termination_date")?.toString() || null;
+  const renewalDate = formData.get("renewal_date")?.toString() || null;
+  const adjustmentDate = formData.get("adjustment_date")?.toString() || null;
+
+  // Get alert preferences
+  const alertDaysBefore = formData.get("alert_days_before")?.toString() || "7";
+  const alertEmail = formData.get("alert_email") !== null;
+  const alertSms = formData.get("alert_sms") !== null;
+  const alertSystem = formData.get("alert_system") !== null;
+
   // Validate required fields
   if (!name || !category || !file) {
     return encodedRedirect(
@@ -450,6 +462,14 @@ export const uploadContractTemplateAction = async (formData: FormData) => {
         file_path: filePath,
         file_url: publicUrl,
         dynamic_fields: dynamicFields,
+        effective_date: effectiveDate,
+        termination_date: terminationDate,
+        renewal_date: renewalDate,
+        adjustment_date: adjustmentDate,
+        alert_days_before: alertDaysBefore,
+        alert_email: alertEmail,
+        alert_sms: alertSms,
+        alert_system: alertSystem,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -511,6 +531,18 @@ export const updateContractTemplateAction = async (formData: FormData) => {
   const category = formData.get("category")?.toString();
   const description = formData.get("description")?.toString() || "";
   const file = formData.get("file") as File | null;
+
+  // Get date fields
+  const effectiveDate = formData.get("effective_date")?.toString() || null;
+  const terminationDate = formData.get("termination_date")?.toString() || null;
+  const renewalDate = formData.get("renewal_date")?.toString() || null;
+  const adjustmentDate = formData.get("adjustment_date")?.toString() || null;
+
+  // Get alert preferences
+  const alertDaysBefore = formData.get("alert_days_before")?.toString() || "7";
+  const alertEmail = formData.get("alert_email") !== null;
+  const alertSms = formData.get("alert_sms") !== null;
+  const alertSystem = formData.get("alert_system") !== null;
 
   // Validate required fields
   if (!templateId || !name || !category) {
@@ -579,6 +611,14 @@ export const updateContractTemplateAction = async (formData: FormData) => {
       category,
       description,
       dynamic_fields: dynamicFields,
+      effective_date: effectiveDate,
+      termination_date: terminationDate,
+      renewal_date: renewalDate,
+      adjustment_date: adjustmentDate,
+      alert_days_before: alertDaysBefore,
+      alert_email: alertEmail,
+      alert_sms: alertSms,
+      alert_system: alertSystem,
       updated_at: new Date().toISOString(),
     };
 

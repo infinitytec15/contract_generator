@@ -7,7 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Save, Plus, Trash2, Tag } from "lucide-react";
+import {
+  FileText,
+  Save,
+  Plus,
+  Trash2,
+  Tag,
+  Calendar,
+  Bell,
+} from "lucide-react";
 import { updateContractTemplateAction } from "@/app/actions";
 import FormMessage from "@/components/form-message";
 
@@ -163,6 +171,163 @@ export default async function EditContractTemplatePage({
                           Leave empty to keep the current file. Upload a new
                           file to replace it.
                         </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-medium">Gestão de Prazos</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="effective_date">
+                            Data de Início de Vigência
+                          </Label>
+                          <Input
+                            id="effective_date"
+                            name="effective_date"
+                            type="date"
+                            defaultValue={
+                              template.effective_date
+                                ? new Date(template.effective_date)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : ""
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="termination_date">
+                            Data de Término de Vigência
+                          </Label>
+                          <Input
+                            id="termination_date"
+                            name="termination_date"
+                            type="date"
+                            defaultValue={
+                              template.termination_date
+                                ? new Date(template.termination_date)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : ""
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="renewal_date">
+                            Data de Renovação
+                          </Label>
+                          <Input
+                            id="renewal_date"
+                            name="renewal_date"
+                            type="date"
+                            defaultValue={
+                              template.renewal_date
+                                ? new Date(template.renewal_date)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : ""
+                            }
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="adjustment_date">
+                            Data de Reajuste
+                          </Label>
+                          <Input
+                            id="adjustment_date"
+                            name="adjustment_date"
+                            type="date"
+                            defaultValue={
+                              template.adjustment_date
+                                ? new Date(template.adjustment_date)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : ""
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Bell className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-medium">Configuração de Alertas</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="alert_days_before">
+                            Dias de Antecedência para Alertas
+                          </Label>
+                          <Input
+                            id="alert_days_before"
+                            name="alert_days_before"
+                            type="number"
+                            min="1"
+                            max="90"
+                            defaultValue={template.alert_days_before || "7"}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Tipos de Alertas</Label>
+                          <div className="flex flex-col gap-2 pt-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id="alert_email"
+                                name="alert_email"
+                                type="checkbox"
+                                className="h-4 w-4"
+                                defaultChecked={template.alert_email}
+                              />
+                              <Label
+                                htmlFor="alert_email"
+                                className="text-sm font-normal"
+                              >
+                                Email
+                              </Label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id="alert_sms"
+                                name="alert_sms"
+                                type="checkbox"
+                                className="h-4 w-4"
+                                defaultChecked={template.alert_sms}
+                              />
+                              <Label
+                                htmlFor="alert_sms"
+                                className="text-sm font-normal"
+                              >
+                                SMS
+                              </Label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id="alert_system"
+                                name="alert_system"
+                                type="checkbox"
+                                className="h-4 w-4"
+                                defaultChecked={template.alert_system}
+                              />
+                              <Label
+                                htmlFor="alert_system"
+                                className="text-sm font-normal"
+                              >
+                                Notificação no Sistema
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
