@@ -1,10 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default function ClientIdRedirect({
-  params,
-}: {
-  params: { id: string };
-}) {
-  // Redirect from the new [id] route to the established [clientId] route
-  return redirect(`/clients/${params.id}`);
+export default function ClientPage({ params }: { params: { id: string } }) {
+  // Redirect to the details page for this client
+  redirect(`/clients/${params.id}/details`);
 }
