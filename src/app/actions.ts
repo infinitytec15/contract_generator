@@ -8,7 +8,7 @@ import { createClient } from "../../supabase/server";
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
-  const fullName = formData.get("full_name")?.toString() || '';
+  const fullName = formData.get("full_name")?.toString() || "";
   const supabase = await createClient();
   const origin = headers().get("origin");
 
@@ -20,7 +20,10 @@ export const signUpAction = async (formData: FormData) => {
     );
   }
 
-  const { data: { user }, error } = await supabase.auth.signUp({
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -28,12 +31,11 @@ export const signUpAction = async (formData: FormData) => {
       data: {
         full_name: fullName,
         email: email,
-      }
+      },
     },
   });
 
   console.log("After signUp", error);
-
 
   if (error) {
     console.error(error.code + " " + error.message);
@@ -42,23 +44,21 @@ export const signUpAction = async (formData: FormData) => {
 
   if (user) {
     try {
-      const { error: updateError } = await supabase
-        .from('users')
-        .insert({
-          id: user.id,
-          name: fullName,
-          full_name: fullName,
-          email: email,
-          user_id: user.id,
-          token_identifier: user.id,
-          created_at: new Date().toISOString()
-        });
+      const { error: updateError } = await supabase.from("users").insert({
+        id: user.id,
+        name: fullName,
+        full_name: fullName,
+        email: email,
+        user_id: user.id,
+        token_identifier: user.id,
+        created_at: new Date().toISOString(),
+      });
 
       if (updateError) {
-        console.error('Error updating user profile:', updateError);
+        console.error("Error updating user profile:", updateError);
       }
     } catch (err) {
-      console.error('Error in user profile creation:', err);
+      console.error("Error in user profile creation:", err);
     }
   }
 
@@ -161,4 +161,98 @@ export const signOutAction = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
   return redirect("/sign-in");
+};
+
+// Contract template upload action
+export const uploadContractTemplateAction = async (formData: FormData) => {
+  const supabase = await createClient();
+
+  // Get form data
+  const name = formData.get("name")?.toString();
+  const category = formData.get("category")?.toString();
+  const description = formData.get("description")?.toString() || "";
+  const file = formData.get("file") as File;
+
+  // Validate required fields
+  if (!name || !category || !file) {
+    return encodedRedirect(
+      "error",
+      "/contracts/upload",
+      "Name, category, and file are required",
+    );
+  }
+
+  try {
+    // Upload file to Supabase Storage
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `contract-templates/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("contracts")
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error("Error uploading template:", uploadError);
+      return encodedRedirect(
+        "error",
+        "/contracts/upload",
+        "Failed to upload template file",
+      );
+    }
+
+    // Get public URL for the uploaded file
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("contracts").getPublicUrl(filePath);
+
+    // Process dynamic fields
+    const fieldNames = formData
+      .getAll("field_names[]")
+      .map((f) => f.toString());
+    const fieldLabels = formData
+      .getAll("field_labels[]")
+      .map((f) => f.toString());
+
+    const dynamicFields = fieldNames
+      .map((name, index) => ({
+        name: name,
+        label: fieldLabels[index] || name,
+      }))
+      .filter((field) => field.name);
+
+    // Insert template record in database
+    const { data: template, error: insertError } = await supabase
+      .from("contract_templates")
+      .insert({
+        name,
+        category,
+        description,
+        file_path: filePath,
+        file_url: publicUrl,
+        dynamic_fields: dynamicFields,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Error inserting template record:", insertError);
+      return encodedRedirect(
+        "error",
+        "/contracts/upload",
+        "Failed to save template information",
+      );
+    }
+
+    return redirect(`/contracts/${template.id}/edit`);
+  } catch (err) {
+    console.error("Error in template upload process:", err);
+    return encodedRedirect(
+      "error",
+      "/contracts/upload",
+      "An unexpected error occurred",
+    );
+  }
 };
