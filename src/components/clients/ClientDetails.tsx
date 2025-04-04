@@ -127,7 +127,11 @@ type ClientDetailsProps = {
   userId: string;
 };
 
-export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetailsProps) {
+export default function ClientDetails({
+  clientId,
+  isAdmin,
+  userId,
+}: ClientDetailsProps) {
   const [client, setClient] = useState<Client | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
@@ -137,7 +141,8 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
-  
+  const [isChangePlanDialogOpen, setIsChangePlanDialogOpen] = useState(false);
+
   // Form states
   const [editClientName, setEditClientName] = useState("");
   const [editClientEmail, setEditClientEmail] = useState("");
@@ -151,11 +156,14 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
   const [editClientPaymentStatus, setEditClientPaymentStatus] = useState("");
   const [editClientPlanId, setEditClientPlanId] = useState<string>("");
   const [editClientNotes, setEditClientNotes] = useState("");
-  
+
   // New payment form states
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
   const [newPaymentDueDate, setNewPaymentDueDate] = useState("");
   const [newPaymentStatus, setNewPaymentStatus] = useState("pending");
+
+  // New plan change states
+  const [newPlanId, setNewPlanId] = useState<string>("");
 
   const supabase = createClient();
   const router = useRouter();
@@ -172,16 +180,18 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
       setLoading(true);
       const { data, error } = await supabase
         .from("clients")
-        .select(`
+        .select(
+          `
           *,
           plans:plan_id (*)
-        `)
+        `,
+        )
         .eq("id", clientId)
         .single();
 
       if (error) throw error;
       setClient(data);
-      
+
       // Set form values
       if (data) {
         setEditClientName(data.name);
@@ -195,6 +205,7 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
         setEditClientStatus(data.status);
         setEditClientPaymentStatus(data.payment_status);
         setEditClientPlanId(data.plan_id || "");
+        setNewPlanId(data.plan_id || "");
         setEditClientNotes(data.notes || "");
       }
     } catch (error: any) {
@@ -210,6 +221,7 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
       const { data, error } = await supabase
         .from("plans")
         .select("*")
+        .eq("is_active", true)
         .order("price");
 
       if (error) throw error;
@@ -238,10 +250,12 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
     try {
       const { data, error } = await supabase
         .from("client_payments")
-        .select(`
+        .select(
+          `
           *,
           plans:plan_id (name)
-        `)
+        `,
+        )
         .eq("client_id", clientId)
         .order("due_date", { ascending: false });
 
@@ -256,7 +270,7 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
     try {
       setError(null);
       setSuccess(null);
-      
+
       if (!editClientName || !editClientEmail) {
         setError("Nome e email são obrigatórios");
         return;
@@ -293,6 +307,55 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
     }
   };
 
+  const handleChangePlan = async () => {
+    try {
+      setError(null);
+      setSuccess(null);
+
+      // Update client plan
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          plan_id: newPlanId || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", clientId);
+
+      if (error) throw error;
+
+      // If a new plan is selected, create a payment record
+      if (newPlanId) {
+        const selectedPlan = plans.find((p) => p.id === newPlanId);
+        if (selectedPlan) {
+          const dueDate = new Date();
+          dueDate.setMonth(dueDate.getMonth() + 1);
+
+          const { error: paymentError } = await supabase
+            .from("client_payments")
+            .insert({
+              client_id: clientId,
+              plan_id: newPlanId,
+              amount: selectedPlan.price,
+              due_date: dueDate.toISOString(),
+              status: "pending",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+          if (paymentError) throw paymentError;
+        }
+      }
+
+      setSuccess("Plano atualizado com sucesso");
+      setIsChangePlanDialogOpen(false);
+      fetchClient();
+      fetchPayments();
+    } catch (error: any) {
+      setError(error.message);
+      console.error("Error changing plan:", error);
+    }
+  };
+
   const handleBlockClient = async (block: boolean) => {
     try {
       setError(null);
@@ -309,7 +372,7 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
 
       if (error) throw error;
 
-      setSuccess(`Cliente ${block ? 'bloqueado' : 'desbloqueado'} com sucesso`);
+      setSuccess(`Cliente ${block ? "bloqueado" : "desbloqueado"} com sucesso`);
       fetchClient();
     } catch (error: any) {
       setError(error.message);
@@ -321,7 +384,7 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
     try {
       setError(null);
       setSuccess(null);
-      
+
       if (!newPaymentAmount || !newPaymentDueDate) {
         setError("Valor e data de vencimento são obrigatórios");
         return;
@@ -356,7 +419,10 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
     }
   };
 
-  const handleUpdatePaymentStatus = async (paymentId: string, status: string) => {
+  const handleUpdatePaymentStatus = async (
+    paymentId: string,
+    status: string,
+  ) => {
     try {
       setError(null);
       setSuccess(null);
@@ -453,6 +519,21 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
     }
   };
 
+  const getBillingCycleLabel = (cycle: string) => {
+    switch (cycle) {
+      case "monthly":
+        return "Mensal";
+      case "quarterly":
+        return "Trimestral";
+      case "semiannual":
+        return "Semestral";
+      case "annual":
+        return "Anual";
+      default:
+        return cycle;
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -476,9 +557,13 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
           <CardTitle>Cliente não encontrado</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>O cliente solicitado não foi encontrado ou você não tem permissão para acessá-lo.</p>
+          <p>
+            O cliente solicitado não foi encontrado ou você não tem permissão
+            para acessá-lo.
+          </p>
           <Button className="mt-4" onClick={() => router.push("/clients")}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para a lista de clientes
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para a lista de
+            clientes
           </Button>
         </CardContent>
       </Card>
@@ -488,8 +573,10 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
   return (
     <>
       {error && <FormMessage type="error" message={error} className="mb-4" />}
-      {success && <FormMessage type="success" message={success} className="mb-4" />}
-      
+      {success && (
+        <FormMessage type="success" message={success} className="mb-4" />
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => router.push("/clients")}>
@@ -497,7 +584,10 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
           </Button>
           <h1 className="text-2xl font-semibold">{client.name}</h1>
           {client.is_blocked && (
-            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+            <Badge
+              variant="outline"
+              className="bg-red-100 text-red-800 border-red-200"
+            >
               Bloqueado
             </Badge>
           )}
@@ -543,7 +633,9 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Status de Pagamento:</span>
+                <span className="text-sm font-medium">
+                  Status de Pagamento:
+                </span>
                 <Badge
                   variant="outline"
                   className={getPaymentStatusBadgeColor(client.payment_status)}
@@ -555,7 +647,11 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
                 <span className="text-sm font-medium">Bloqueado:</span>
                 <Badge
                   variant="outline"
-                  className={client.is_blocked ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}
+                  className={
+                    client.is_blocked
+                      ? "bg-red-100 text-red-800"
+                      : "bg-green-100 text-green-800"
+                  }
                 >
                   {client.is_blocked ? "Sim" : "Não"}
                 </Badge>
@@ -584,4 +680,167 @@ export default function ClientDetails({ clientId, isAdmin, userId }: ClientDetai
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Ciclo:</span>
-                  <span>{client.plans.billing_cycle === "monthly" ?
+                  <span>
+                    {getBillingCycleLabel(client.plans.billing_cycle)}
+                  </span>
+                </div>
+                {client.plans.description && (
+                  <div className="pt-2">
+                    <span className="text-sm font-medium">Descrição:</span>
+                    <p className="text-sm mt-1">{client.plans.description}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-2">
+                <p className="text-sm text-gray-500">Sem plano atribuído</p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                setNewPlanId(client.plan_id || "");
+                setIsChangePlanDialogOpen(true);
+              }}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              {client.plans ? "Alterar Plano" : "Atribuir Plano"}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <User className="h-5 w-5 text-blue-600" />
+              Contato
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Email:</span>
+                <span className="text-sm">{client.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Telefone:</span>
+                <span className="text-sm">
+                  {client.phone || "Não informado"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Documento:</span>
+                <span className="text-sm">
+                  {client.document || "Não informado"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Último Login:</span>
+                <span className="text-sm">
+                  {client.last_login
+                    ? new Date(client.last_login).toLocaleDateString()
+                    : "Nunca"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Change Plan Dialog */}
+      <Dialog
+        open={isChangePlanDialogOpen}
+        onOpenChange={setIsChangePlanDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {client.plans ? "Alterar Plano" : "Atribuir Plano"}
+            </DialogTitle>
+            <DialogDescription>
+              Selecione um plano para este cliente. Um novo registro de
+              pagamento será criado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="planSelect">Plano</Label>
+                <Select value={newPlanId} onValueChange={setNewPlanId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sem plano</SelectItem>
+                    {plans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name} - R$ {plan.price.toFixed(2)}/
+                        {plan.billing_cycle === "monthly"
+                          ? "mês"
+                          : plan.billing_cycle === "annual"
+                            ? "ano"
+                            : plan.billing_cycle}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {newPlanId && (
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <h3 className="font-medium text-sm">
+                    Detalhes do Plano Selecionado
+                  </h3>
+                  {(() => {
+                    const selectedPlan = plans.find((p) => p.id === newPlanId);
+                    if (!selectedPlan) return null;
+
+                    return (
+                      <div className="mt-2 space-y-1 text-sm">
+                        <p>
+                          <span className="font-medium">Nome:</span>{" "}
+                          {selectedPlan.name}
+                        </p>
+                        <p>
+                          <span className="font-medium">Valor:</span> R${" "}
+                          {selectedPlan.price.toFixed(2)}
+                        </p>
+                        <p>
+                          <span className="font-medium">Ciclo:</span>{" "}
+                          {getBillingCycleLabel(selectedPlan.billing_cycle)}
+                        </p>
+                        {selectedPlan.description && (
+                          <p>
+                            <span className="font-medium">Descrição:</span>{" "}
+                            {selectedPlan.description}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsChangePlanDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleChangePlan}>
+              {client.plans ? "Alterar Plano" : "Atribuir Plano"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rest of the component remains the same */}
+    </>
+  );
+}

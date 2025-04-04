@@ -9,6 +9,7 @@ export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const fullName = formData.get("full_name")?.toString() || "";
+  const planId = formData.get("plan_id")?.toString() || null;
   const supabase = await createClient();
   const origin = headers().get("origin");
 
@@ -31,6 +32,7 @@ export const signUpAction = async (formData: FormData) => {
       data: {
         full_name: fullName,
         email: email,
+        plan_id: planId,
       },
     },
   });
@@ -184,6 +186,200 @@ export const signOutAction = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
   return redirect("/sign-in");
+};
+
+// Client creation action
+export const createClientAction = async (formData: FormData) => {
+  const supabase = await createClient();
+
+  // Get form data
+  const name = formData.get("name")?.toString();
+  const email = formData.get("email")?.toString();
+  const phone = formData.get("phone")?.toString() || null;
+  const document = formData.get("document")?.toString() || null;
+  const address = formData.get("address")?.toString() || null;
+  const city = formData.get("city")?.toString() || null;
+  const state = formData.get("state")?.toString() || null;
+  const postalCode = formData.get("postal_code")?.toString() || null;
+  const planId = formData.get("plan_id")?.toString() || null;
+  const notes = formData.get("notes")?.toString() || null;
+  const userId = formData.get("user_id")?.toString();
+
+  // Validate required fields
+  if (!name || !email || !userId) {
+    return encodedRedirect(
+      "error",
+      "/clients",
+      "Nome, email e usuário responsável são obrigatórios",
+    );
+  }
+
+  try {
+    // Create client
+    const { data: client, error } = await supabase
+      .from("clients")
+      .insert({
+        user_id: userId,
+        name,
+        email,
+        phone,
+        document,
+        address,
+        city,
+        state,
+        postal_code: postalCode,
+        plan_id: planId,
+        notes,
+        status: "active",
+        payment_status: "pending",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // If plan is selected, create initial payment record
+    if (planId) {
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("id", planId)
+        .single();
+
+      if (plan) {
+        const dueDate = new Date();
+        dueDate.setMonth(dueDate.getMonth() + 1);
+
+        const { error: paymentError } = await supabase
+          .from("client_payments")
+          .insert({
+            client_id: client.id,
+            plan_id: planId,
+            amount: plan.price,
+            due_date: dueDate.toISOString(),
+            status: "pending",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (paymentError) throw paymentError;
+      }
+    }
+
+    return encodedRedirect("success", "/clients", "Cliente criado com sucesso");
+  } catch (err: any) {
+    console.error("Erro ao criar cliente:", err);
+    return encodedRedirect(
+      "error",
+      "/clients",
+      `Erro ao criar cliente: ${err.message}`,
+    );
+  }
+};
+
+// Client update action
+export const updateClientAction = async (formData: FormData) => {
+  const supabase = await createClient();
+
+  // Get form data
+  const clientId = formData.get("client_id")?.toString();
+  const name = formData.get("name")?.toString();
+  const email = formData.get("email")?.toString();
+  const phone = formData.get("phone")?.toString() || null;
+  const document = formData.get("document")?.toString() || null;
+  const address = formData.get("address")?.toString() || null;
+  const city = formData.get("city")?.toString() || null;
+  const state = formData.get("state")?.toString() || null;
+  const postalCode = formData.get("postal_code")?.toString() || null;
+  const planId = formData.get("plan_id")?.toString() || null;
+  const notes = formData.get("notes")?.toString() || null;
+  const status = formData.get("status")?.toString() || "active";
+  const paymentStatus = formData.get("payment_status")?.toString() || "pending";
+
+  // Validate required fields
+  if (!clientId || !name || !email) {
+    return encodedRedirect(
+      "error",
+      `/clients/${clientId}`,
+      "ID do cliente, nome e email são obrigatórios",
+    );
+  }
+
+  try {
+    // Get current client data to check if plan changed
+    const { data: currentClient } = await supabase
+      .from("clients")
+      .select("plan_id")
+      .eq("id", clientId)
+      .single();
+
+    const planChanged = currentClient && currentClient.plan_id !== planId;
+
+    // Update client
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        name,
+        email,
+        phone,
+        document,
+        address,
+        city,
+        state,
+        postal_code: postalCode,
+        plan_id: planId,
+        notes,
+        status,
+        payment_status: paymentStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", clientId);
+
+    if (error) throw error;
+
+    // If plan changed and new plan is selected, create a payment record
+    if (planChanged && planId) {
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("id", planId)
+        .single();
+
+      if (plan) {
+        const dueDate = new Date();
+        dueDate.setMonth(dueDate.getMonth() + 1);
+
+        const { error: paymentError } = await supabase
+          .from("client_payments")
+          .insert({
+            client_id: clientId,
+            plan_id: planId,
+            amount: plan.price,
+            due_date: dueDate.toISOString(),
+            status: "pending",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+
+        if (paymentError) throw paymentError;
+      }
+    }
+
+    return encodedRedirect(
+      "success",
+      `/clients/${clientId}`,
+      "Cliente atualizado com sucesso",
+    );
+  } catch (err: any) {
+    console.error("Erro ao atualizar cliente:", err);
+    return encodedRedirect(
+      "error",
+      `/clients/${clientId}`,
+      `Erro ao atualizar cliente: ${err.message}`,
+    );
+  }
 };
 
 // Contract template upload action

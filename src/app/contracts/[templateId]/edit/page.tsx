@@ -15,7 +15,7 @@ export default async function EditContractTemplatePage({
   params,
   searchParams,
 }: {
-  params: { templateId: string };
+  params: { id: string };
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const supabase = await createClient();
@@ -33,7 +33,7 @@ export default async function EditContractTemplatePage({
   const { data: template, error } = await supabase
     .from("contract_templates")
     .select("*")
-    .eq("id", params.templateId)
+    .eq("id", params.id)
     .single();
 
   if (error || !template) {
@@ -86,11 +86,7 @@ export default async function EditContractTemplatePage({
                     encType="multipart/form-data"
                     className="space-y-6"
                   >
-                    <input
-                      type="hidden"
-                      name="templateId"
-                      value={params.templateId}
-                    />
+                    <input type="hidden" name="templateId" value={params.id} />
                     <input
                       type="hidden"
                       name="current_file_path"

@@ -5,9 +5,7 @@ import DashboardHeader from "@/components/dashboard-header";
 import DashboardSidebar from "@/components/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, FileText, PenTool, Plus, Users, Clock } from "lucide-react";
-import { redirect } from "next/navigation";
-import { createClient } from "../../../supabase/server";
+import { BarChart3, Users, CreditCard, AlertCircle } from "lucide-react";
 import { Line, Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -36,7 +34,7 @@ ChartJS.register(
   ArcElement,
 );
 
-export default function Dashboard() {
+export default function AdminDashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +50,7 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/dashboard");
+        const response = await fetch("/api/admin/dashboard");
 
         if (!response.ok) {
           throw new Error("Failed to fetch dashboard data");
@@ -92,7 +90,7 @@ export default function Dashboard() {
         <main className="p-4 sm:ml-64 pt-20">
           <div className="p-4">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-semibold">Dashboard</h1>
+              <h1 className="text-2xl font-semibold">Painel Administrativo</h1>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {[1, 2, 3, 4].map((_, index) => (
@@ -129,7 +127,7 @@ export default function Dashboard() {
         <main className="p-4 sm:ml-64 pt-20">
           <div className="p-4">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-semibold">Dashboard</h1>
+              <h1 className="text-2xl font-semibold">Painel Administrativo</h1>
             </div>
             <Card>
               <CardContent className="pt-6">
@@ -148,42 +146,44 @@ export default function Dashboard() {
   const stats = dashboardData
     ? [
         {
-          title: "Total de contratos",
-          value: dashboardData.stats.totalContracts || 0,
-          icon: FileText,
+          title: "Total de Clientes",
+          value: dashboardData.stats.totalClients || 0,
+          icon: Users,
           color: "bg-blue-100 text-blue-600",
         },
         {
-          title: "Contratos pendentes",
-          value: dashboardData.stats.pendingContracts || 0,
-          icon: Clock,
-          color: "bg-orange-100 text-orange-600",
-        },
-        {
-          title: "Contratos assinados",
-          value: dashboardData.stats.signedContracts || 0,
-          icon: PenTool,
+          title: "Clientes Ativos",
+          value: dashboardData.stats.activeClients || 0,
+          icon: Users,
           color: "bg-green-100 text-green-600",
         },
         {
-          title: "Total de clientes",
-          value: dashboardData.stats.totalClients || 0,
-          icon: Users,
+          title: "Total de Planos",
+          value: dashboardData.stats.totalPlans || 0,
+          icon: CreditCard,
           color: "bg-purple-100 text-purple-600",
+        },
+        {
+          title: "Pagamentos Atrasados",
+          value: dashboardData.stats.overduePayments || 0,
+          icon: AlertCircle,
+          color: "bg-red-100 text-red-600",
         },
       ]
     : [];
 
-  // Chart data for monthly contracts
-  const monthlyContractsData = {
+  // Chart data for monthly registrations
+  const monthlyRegistrationsData = {
     labels:
-      dashboardData?.charts.monthlyContracts.map((item) => item.month) || [],
+      dashboardData?.charts.monthlyRegistrations.map((item) => item.month) ||
+      [],
     datasets: [
       {
-        label: "Contratos criados",
+        label: "Novos Clientes",
         data:
-          dashboardData?.charts.monthlyContracts.map((item) => item.count) ||
-          [],
+          dashboardData?.charts.monthlyRegistrations.map(
+            (item) => item.count,
+          ) || [],
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.5)",
         tension: 0.3,
@@ -191,23 +191,23 @@ export default function Dashboard() {
     ],
   };
 
-  // Chart data for contract status
-  const contractStatusData = {
-    labels: ["Assinados", "Pendentes", "Rascunhos"],
+  // Chart data for payment status
+  const paymentStatusData = {
+    labels: ["Pagos", "Pendentes", "Atrasados"],
     datasets: [
       {
-        label: "Status dos contratos",
+        label: "Status dos Pagamentos",
         data: dashboardData
           ? [
-              dashboardData.charts.contractStatus.signed || 0,
-              dashboardData.charts.contractStatus.pending || 0,
-              dashboardData.charts.contractStatus.draft || 0,
+              dashboardData.charts.paymentStatusCounts.paid || 0,
+              dashboardData.charts.paymentStatusCounts.pending || 0,
+              dashboardData.charts.paymentStatusCounts.overdue || 0,
             ]
           : [0, 0, 0],
         backgroundColor: [
           "rgba(34, 197, 94, 0.6)",
           "rgba(249, 115, 22, 0.6)",
-          "rgba(100, 116, 139, 0.6)",
+          "rgba(239, 68, 68, 0.6)",
         ],
       },
     ],
@@ -220,11 +220,7 @@ export default function Dashboard() {
       <main className="p-4 sm:ml-64 pt-20">
         <div className="p-4">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold">Dashboard</h1>
-            <Button className="flex items-center gap-2">
-              <Plus size={16} />
-              <span>Novo Contrato</span>
-            </Button>
+            <h1 className="text-2xl font-semibold">Painel Administrativo</h1>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -252,12 +248,12 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <Card>
               <CardHeader>
-                <CardTitle>Contratos por Mês</CardTitle>
+                <CardTitle>Registros de Clientes por Mês</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-80">
                   <Line
-                    data={monthlyContractsData}
+                    data={monthlyRegistrationsData}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -274,12 +270,12 @@ export default function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Status dos Contratos</CardTitle>
+                <CardTitle>Status dos Pagamentos</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-80">
                   <Bar
-                    data={contractStatusData}
+                    data={paymentStatusData}
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -297,53 +293,39 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Limites do Plano</CardTitle>
+              <CardTitle>Usuários Recentes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    Contratos
-                  </h3>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">
-                      Utilizados: {dashboardData?.stats.totalContracts || 0}
-                    </span>
-                    <span className="text-sm font-medium">
-                      Limite: {dashboardData?.stats.contractLimit || 0}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full"
-                      style={{
-                        width: `${dashboardData ? Math.min(100, (dashboardData.stats.totalContracts / dashboardData.stats.contractLimit) * 100) : 0}%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">
-                    Clientes
-                  </h3>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">
-                      Utilizados: {dashboardData?.stats.totalClients || 0}
-                    </span>
-                    <span className="text-sm font-medium">
-                      Limite: {dashboardData?.stats.clientLimit || 0}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-purple-600 h-2.5 rounded-full"
-                      style={{
-                        width: `${dashboardData ? Math.min(100, (dashboardData.stats.totalClients / dashboardData.stats.clientLimit) * 100) : 0}%`,
-                      }}
-                    ></div>
-                  </div>
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500">
+                  <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3">
+                        Nome
+                      </th>
+                      <th scope="col" className="px-6 py-3">
+                        Email
+                      </th>
+                      <th scope="col" className="px-6 py-3">
+                        Data de Registro
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardData?.recentUsers.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="bg-white border-b hover:bg-gray-50"
+                      >
+                        <td className="px-6 py-4">{user.full_name || "N/A"}</td>
+                        <td className="px-6 py-4">{user.email}</td>
+                        <td className="px-6 py-4">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
