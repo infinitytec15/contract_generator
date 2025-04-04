@@ -409,7 +409,7 @@ export const uploadContractTemplateAction = async (formData: FormData) => {
     return encodedRedirect(
       "error",
       "/contracts/upload",
-      "Name, category, and file are required",
+      "Nome, categoria e arquivo são obrigatórios",
     );
   }
 
@@ -466,7 +466,7 @@ export const uploadContractTemplateAction = async (formData: FormData) => {
         termination_date: terminationDate,
         renewal_date: renewalDate,
         adjustment_date: adjustmentDate,
-        alert_days_before: alertDaysBefore,
+        alert_days_before: parseInt(alertDaysBefore) || 7,
         alert_email: alertEmail,
         alert_sms: alertSms,
         alert_system: alertSystem,
@@ -615,7 +615,7 @@ export const updateContractTemplateAction = async (formData: FormData) => {
       termination_date: terminationDate,
       renewal_date: renewalDate,
       adjustment_date: adjustmentDate,
-      alert_days_before: alertDaysBefore,
+      alert_days_before: parseInt(alertDaysBefore) || 7,
       alert_email: alertEmail,
       alert_sms: alertSms,
       alert_system: alertSystem,

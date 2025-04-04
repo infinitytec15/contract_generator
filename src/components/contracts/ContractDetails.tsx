@@ -17,6 +17,7 @@ import {
 import { useRouter } from "next/navigation";
 import SignatureButton from "./SignatureButton";
 import SignatureStatus from "./SignatureStatus";
+import AlertSettings from "./AlertSettings";
 
 interface ContractDetailsProps {
   contractId: string;
@@ -432,6 +433,9 @@ export default function ContractDetails({ contractId }: ContractDetailsProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Configurações de Alerta */}
+      <AlertSettings contractId={contractId} />
     </div>
   );
 }
