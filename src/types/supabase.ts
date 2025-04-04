@@ -504,6 +504,44 @@ export type Database = {
         }
         Relationships: []
       }
+      document_access_logs: {
+        Row: {
+          action: string
+          document_id: string
+          id: string
+          ip_address: string | null
+          timestamp: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          document_id: string
+          id?: string
+          ip_address?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          document_id?: string
+          id?: string
+          ip_address?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_access_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vault_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_integrations: {
         Row: {
           api_key: string | null
@@ -853,41 +891,62 @@ export type Database = {
       }
       vault_documents: {
         Row: {
+          classification_processed: boolean | null
           created_at: string | null
           description: string | null
+          document_type: string | null
+          expiration_date: string | null
+          extracted_text: string | null
           file_path: string
           file_size: number
           file_type: string | null
           file_url: string
+          folder_path: string | null
           id: string
           is_critical: boolean | null
           name: string
+          ocr_processed: boolean | null
+          tags: string[] | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          classification_processed?: boolean | null
           created_at?: string | null
           description?: string | null
+          document_type?: string | null
+          expiration_date?: string | null
+          extracted_text?: string | null
           file_path: string
           file_size: number
           file_type?: string | null
           file_url: string
+          folder_path?: string | null
           id?: string
           is_critical?: boolean | null
           name: string
+          ocr_processed?: boolean | null
+          tags?: string[] | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          classification_processed?: boolean | null
           created_at?: string | null
           description?: string | null
+          document_type?: string | null
+          expiration_date?: string | null
+          extracted_text?: string | null
           file_path?: string
           file_size?: number
           file_type?: string | null
           file_url?: string
+          folder_path?: string | null
           id?: string
           is_critical?: boolean | null
           name?: string
+          ocr_processed?: boolean | null
+          tags?: string[] | null
           updated_at?: string | null
           user_id?: string
         }

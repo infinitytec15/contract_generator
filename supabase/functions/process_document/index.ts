@@ -99,6 +99,33 @@ Deno.serve(async (req) => {
     }
     folderPath += documentType;
 
+    // Check for potential expiration date in the document content
+    let expirationDate = document.expiration_date;
+    if (!expirationDate) {
+      // Try to extract expiration date from the text
+      const expirationMatch = mockExtractedText.match(
+        /Expiration Date: (\d{4}-\d{2}-\d{2})/i,
+      );
+      if (expirationMatch && expirationMatch[1]) {
+        expirationDate = expirationMatch[1];
+      }
+    }
+
+    // Calculate expiration status
+    let isExpired = false;
+    let daysUntilExpiration = null;
+
+    if (expirationDate) {
+      const expDate = new Date(expirationDate);
+      const today = new Date();
+      isExpired = expDate < today;
+
+      if (!isExpired) {
+        const diffTime = Math.abs(expDate.getTime() - today.getTime());
+        daysUntilExpiration = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+    }
+
     // Update document with extracted information
     const { error: updateError } = await supabase
       .from("vault_documents")
@@ -107,11 +134,45 @@ Deno.serve(async (req) => {
         document_type: documentType,
         tags: tags,
         folder_path: folderPath,
+        expiration_date: expirationDate,
+        is_expired: isExpired,
+        days_until_expiration: daysUntilExpiration,
         ocr_processed: true,
         classification_processed: true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", documentId);
+
+    // Create notification if document is expired or about to expire
+    if (
+      expirationDate &&
+      (isExpired || (daysUntilExpiration !== null && daysUntilExpiration <= 30))
+    ) {
+      try {
+        // Get document owner
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+
+        if (userId) {
+          // Create notification
+          await supabase.from("notifications").insert({
+            user_id: userId,
+            title: isExpired
+              ? "Documento Expirado"
+              : "Documento Próximo da Expiração",
+            message: isExpired
+              ? `O documento "${document.name}" expirou em ${new Date(expirationDate).toLocaleDateString()}.`
+              : `O documento "${document.name}" irá expirar em ${daysUntilExpiration} dias.`,
+            type: isExpired ? "warning" : "info",
+            read: false,
+            created_at: new Date().toISOString(),
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error creating notification:", notificationError);
+        // Continue even if notification creation fails
+      }
+    }
 
     if (updateError) {
       throw new Error(`Error updating document: ${updateError.message}`);
@@ -124,6 +185,9 @@ Deno.serve(async (req) => {
         documentType,
         tags,
         folderPath,
+        expirationDate,
+        isExpired,
+        daysUntilExpiration,
         message: "Document processed successfully",
       }),
       {

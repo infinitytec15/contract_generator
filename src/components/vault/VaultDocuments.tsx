@@ -52,8 +52,10 @@ import {
 import FormMessage from "@/components/form-message";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import { formatFileSize } from "@/utils/utils";
 
-type VaultDocument = {
+// Types
+interface VaultDocument {
   id: string;
   name: string;
   description: string | null;
@@ -70,11 +72,21 @@ type VaultDocument = {
   folder_path?: string;
   ocr_processed?: boolean;
   classification_processed?: boolean;
-};
+}
 
-type UserPlan = {
+interface UserPlan {
   vault_storage_limit: number;
-};
+}
+
+interface DocumentAccessLog {
+  id: string;
+  document_id: string;
+  user_id: string;
+  action: string;
+  timestamp: string;
+  ip_address?: string;
+  user_agent?: string;
+}
 
 export default function VaultDocuments() {
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
@@ -97,6 +109,9 @@ export default function VaultDocuments() {
   const [newDocumentDescription, setNewDocumentDescription] = useState("");
   const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
   const [newDocumentIsCritical, setNewDocumentIsCritical] = useState(false);
+  const [newDocumentType, setNewDocumentType] = useState("");
+  const [newExpirationDate, setNewExpirationDate] = useState("");
+  const [newTags, setNewTags] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const supabase = createClient();
@@ -248,6 +263,9 @@ export default function VaultDocuments() {
           file_size: newDocumentFile.size,
           file_type: newDocumentFile.type,
           is_critical: newDocumentIsCritical,
+          document_type: newDocumentType || null,
+          tags: newTags.length > 0 ? newTags : null,
+          expiration_date: newExpirationDate || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -397,14 +415,12 @@ export default function VaultDocuments() {
     setNewDocumentDescription("");
     setNewDocumentFile(null);
     setNewDocumentIsCritical(false);
+    setNewDocumentType("");
+    setNewExpirationDate("");
+    setNewTags([]);
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " B";
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
-    else return (bytes / 1073741824).toFixed(1) + " GB";
-  };
+  // Using the utility function imported from utils
 
   const getStoragePercentage = () => {
     if (!userPlan) return 0;
@@ -510,6 +526,24 @@ export default function VaultDocuments() {
                       Tamanho: {formatFileSize(newDocumentFile.size)}
                     </p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="documentType">Tipo de Documento</Label>
+                  <Input
+                    id="documentType"
+                    placeholder="Ex: RG, CNH, Contrato"
+                    value={newDocumentType}
+                    onChange={(e) => setNewDocumentType(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expirationDate">Data de Expiração</Label>
+                  <Input
+                    id="expirationDate"
+                    type="date"
+                    value={newExpirationDate}
+                    onChange={(e) => setNewExpirationDate(e.target.value)}
+                  />
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
