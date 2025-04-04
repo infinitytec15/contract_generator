@@ -1,6 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../supabase/server";
 
+/**
+ * @swagger
+ * /admin/dashboard:
+ *   get:
+ *     summary: Obtém estatísticas do painel administrativo
+ *     description: Retorna estatísticas gerais para o painel administrativo, incluindo contagens de clientes, planos, pagamentos e usuários recentes.
+ *     tags:
+ *       - admin-dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Estatísticas do painel administrativo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     totalClients:
+ *                       type: integer
+ *                       description: Número total de clientes
+ *                     activeClients:
+ *                       type: integer
+ *                       description: Número de clientes ativos
+ *                     inactiveClients:
+ *                       type: integer
+ *                       description: Número de clientes inativos
+ *                     totalPlans:
+ *                       type: integer
+ *                       description: Número total de planos
+ *                     activePlans:
+ *                       type: integer
+ *                       description: Número de planos ativos
+ *                     overduePayments:
+ *                       type: integer
+ *                       description: Número de pagamentos em atraso
+ *                 charts:
+ *                   type: object
+ *                   properties:
+ *                     monthlyRegistrations:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: string
+ *                             description: Nome do mês
+ *                           count:
+ *                             type: integer
+ *                             description: Número de registros no mês
+ *                     paymentStatusCounts:
+ *                       type: object
+ *                       properties:
+ *                         paid:
+ *                           type: integer
+ *                           description: Número de pagamentos pagos
+ *                         pending:
+ *                           type: integer
+ *                           description: Número de pagamentos pendentes
+ *                         overdue:
+ *                           type: integer
+ *                           description: Número de pagamentos em atraso
+ *                 recentUsers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: ID do usuário
+ *                       email:
+ *                         type: string
+ *                         description: Email do usuário
+ *                       full_name:
+ *                         type: string
+ *                         description: Nome completo do usuário
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data de criação do usuário
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Proibido - usuário não tem permissão de super_admin
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();

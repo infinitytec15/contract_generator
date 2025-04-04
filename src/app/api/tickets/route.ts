@@ -1,6 +1,93 @@
 import { createClient } from "../../../../supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * @swagger
+ * /tickets:
+ *   get:
+ *     summary: Lista todos os tickets
+ *     description: Retorna uma lista de tickets com base nos filtros fornecidos. Administradores podem ver todos os tickets, enquanto usuários regulares só podem ver seus próprios tickets.
+ *     tags:
+ *       - tickets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [open, awaiting_response, responded, resolved, closed]
+ *         description: Filtrar por status do ticket
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high, critical]
+ *         description: Filtrar por prioridade do ticket
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *           enum: [support, billing, technical, sales]
+ *         description: Filtrar por departamento
+ *     responses:
+ *       200:
+ *         description: Lista de tickets
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: ID do ticket
+ *                       user_id:
+ *                         type: string
+ *                         description: ID do usuário que criou o ticket
+ *                       title:
+ *                         type: string
+ *                         description: Título do ticket
+ *                       description:
+ *                         type: string
+ *                         description: Descrição do ticket
+ *                       status:
+ *                         type: string
+ *                         enum: [open, awaiting_response, responded, resolved, closed]
+ *                         description: Status atual do ticket
+ *                       priority:
+ *                         type: string
+ *                         enum: [low, medium, high, critical]
+ *                         description: Prioridade do ticket
+ *                       department:
+ *                         type: string
+ *                         enum: [support, billing, technical, sales]
+ *                         description: Departamento responsável pelo ticket
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data de criação do ticket
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data da última atualização do ticket
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function GET(request: NextRequest) {
   const supabase = createClient();
 
@@ -60,6 +147,98 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ tickets: data });
 }
 
+/**
+ * @swagger
+ * /tickets:
+ *   post:
+ *     summary: Cria um novo ticket
+ *     description: Cria um novo ticket de suporte e notifica os administradores
+ *     tags:
+ *       - tickets
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Título do ticket
+ *               description:
+ *                 type: string
+ *                 description: Descrição detalhada do problema
+ *               department:
+ *                 type: string
+ *                 enum: [support, billing, technical, sales]
+ *                 description: Departamento para o qual o ticket é direcionado
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high, critical]
+ *                 description: Prioridade do ticket
+ *             required:
+ *               - title
+ *               - description
+ *     responses:
+ *       200:
+ *         description: Ticket criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ticket:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: ID do ticket
+ *                     user_id:
+ *                       type: string
+ *                       description: ID do usuário que criou o ticket
+ *                     title:
+ *                       type: string
+ *                       description: Título do ticket
+ *                     description:
+ *                       type: string
+ *                       description: Descrição do ticket
+ *                     status:
+ *                       type: string
+ *                       enum: [open, awaiting_response, responded, resolved, closed]
+ *                       description: Status atual do ticket
+ *                     priority:
+ *                       type: string
+ *                       enum: [low, medium, high, critical]
+ *                       description: Prioridade do ticket
+ *                     department:
+ *                       type: string
+ *                       enum: [support, billing, technical, sales]
+ *                       description: Departamento responsável pelo ticket
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Data de criação do ticket
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function POST(request: NextRequest) {
   const supabase = createClient();
 

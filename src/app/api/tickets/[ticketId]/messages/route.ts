@@ -1,6 +1,83 @@
 import { createClient } from "../../../../../../supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * @swagger
+ * /tickets/{ticketId}/messages:
+ *   get:
+ *     summary: Obtém mensagens de um ticket
+ *     description: Retorna todas as mensagens associadas a um ticket específico
+ *     tags:
+ *       - tickets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do ticket
+ *     responses:
+ *       200:
+ *         description: Lista de mensagens do ticket
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: ID da mensagem
+ *                       ticket_id:
+ *                         type: string
+ *                         description: ID do ticket
+ *                       user_id:
+ *                         type: string
+ *                         description: ID do usuário que enviou a mensagem
+ *                       message:
+ *                         type: string
+ *                         description: Conteúdo da mensagem
+ *                       is_from_admin:
+ *                         type: boolean
+ *                         description: Indica se a mensagem é de um administrador
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data de criação da mensagem
+ *                       users:
+ *                         type: object
+ *                         properties:
+ *                           email:
+ *                             type: string
+ *                             description: Email do usuário
+ *                           full_name:
+ *                             type: string
+ *                             description: Nome completo do usuário
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Proibido - usuário não tem permissão para ver este ticket
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: { ticketId: string } },
@@ -63,6 +140,96 @@ export async function GET(
   return NextResponse.json({ messages: data });
 }
 
+/**
+ * @swagger
+ * /tickets/{ticketId}/messages:
+ *   post:
+ *     summary: Adiciona uma mensagem a um ticket
+ *     description: Adiciona uma nova mensagem a um ticket específico e atualiza o status do ticket
+ *     tags:
+ *       - tickets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do ticket
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Conteúdo da mensagem
+ *             required:
+ *               - message
+ *     responses:
+ *       200:
+ *         description: Mensagem adicionada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: ID da mensagem
+ *                     ticket_id:
+ *                       type: string
+ *                       description: ID do ticket
+ *                     user_id:
+ *                       type: string
+ *                       description: ID do usuário que enviou a mensagem
+ *                     message:
+ *                       type: string
+ *                       description: Conteúdo da mensagem
+ *                     is_from_admin:
+ *                       type: boolean
+ *                       description: Indica se a mensagem é de um administrador
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Data de criação da mensagem
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Proibido - usuário não tem permissão para responder a este ticket
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Ticket não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: { ticketId: string } },

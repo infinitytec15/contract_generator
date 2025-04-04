@@ -1,6 +1,93 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../supabase/server";
 
+/**
+ * @swagger
+ * /dashboard:
+ *   get:
+ *     summary: Obtém dados do painel do usuário
+ *     description: Retorna estatísticas e dados para o painel do usuário, incluindo informações sobre clientes, contratos e limites do plano.
+ *     tags:
+ *       - dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados do painel do usuário
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     totalClients:
+ *                       type: integer
+ *                       description: Número total de clientes
+ *                     totalContracts:
+ *                       type: integer
+ *                       description: Número total de contratos
+ *                     contractsRemaining:
+ *                       type: integer
+ *                       description: Número de contratos restantes no plano
+ *                     clientsRemaining:
+ *                       type: integer
+ *                       description: Número de clientes restantes no plano
+ *                     signedContracts:
+ *                       type: integer
+ *                       description: Número de contratos assinados
+ *                     pendingContracts:
+ *                       type: integer
+ *                       description: Número de contratos pendentes
+ *                     draftContracts:
+ *                       type: integer
+ *                       description: Número de contratos em rascunho
+ *                     contractLimit:
+ *                       type: integer
+ *                       description: Limite de contratos do plano
+ *                     clientLimit:
+ *                       type: integer
+ *                       description: Limite de clientes do plano
+ *                 charts:
+ *                   type: object
+ *                   properties:
+ *                     monthlyContracts:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: string
+ *                             description: Nome do mês
+ *                           count:
+ *                             type: integer
+ *                             description: Número de contratos no mês
+ *                     contractStatus:
+ *                       type: object
+ *                       properties:
+ *                         signed:
+ *                           type: integer
+ *                           description: Número de contratos assinados
+ *                         pending:
+ *                           type: integer
+ *                           description: Número de contratos pendentes
+ *                         draft:
+ *                           type: integer
+ *                           description: Número de contratos em rascunho
+ *       401:
+ *         description: Não autorizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
