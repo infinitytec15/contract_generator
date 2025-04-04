@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "../../../supabase/client";
+import { createClient } from "../../../../supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import ClientDetails from "@/components/clients/ClientDetails";
 export default function ClientDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: { clientId: string };
 }) {
   const [client, setClient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function ClientDetailsPage({
         const { data, error } = await supabase
           .from("clients")
           .select("*")
-          .eq("id", params.id)
+          .eq("id", params.clientId)
           .single();
 
         if (error) throw error;
@@ -39,7 +39,7 @@ export default function ClientDetailsPage({
     }
 
     fetchClient();
-  }, [params.id]);
+  }, [params.clientId]);
 
   if (loading) {
     return <div className="p-8">Carregando detalhes do cliente...</div>;
