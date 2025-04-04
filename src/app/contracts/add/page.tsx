@@ -12,7 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileUpload, Upload, Tag, Save, Calendar, Bell } from "lucide-react";
+import {
+  FileUpload,
+  Upload,
+  Tag,
+  Save,
+  Calendar,
+  Bell,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../supabase/server";
 import { uploadContractTemplateAction } from "@/app/actions";
@@ -54,14 +63,16 @@ export default async function AddContractPage() {
                     <Label htmlFor="name">Nome do Contrato</Label>
                     <Input
                       id="name"
+                      name="name"
                       placeholder="Ex: Contrato de Prestação de Serviços"
+                      required
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="category">Categoria</Label>
-                    <Select>
-                      <SelectTrigger>
+                    <Select name="category" required>
+                      <SelectTrigger id="category">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
                       <SelectContent>
@@ -84,8 +95,8 @@ export default async function AddContractPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="branch">Ramo de Atividade</Label>
-                    <Select>
-                      <SelectTrigger>
+                    <Select name="branch">
+                      <SelectTrigger id="branch">
                         <SelectValue placeholder="Selecione um ramo" />
                       </SelectTrigger>
                       <SelectContent>
@@ -100,8 +111,8 @@ export default async function AddContractPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
-                    <Select defaultValue="active">
-                      <SelectTrigger>
+                    <Select name="status" defaultValue="active">
+                      <SelectTrigger id="status">
                         <SelectValue placeholder="Selecione um status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -116,6 +127,7 @@ export default async function AddContractPage() {
                   <Label htmlFor="description">Descrição (opcional)</Label>
                   <Textarea
                     id="description"
+                    name="description"
                     placeholder="Descreva o propósito deste contrato..."
                     rows={3}
                   />
@@ -135,6 +147,7 @@ export default async function AddContractPage() {
                     type="file"
                     accept=".pdf,.docx"
                     className="hidden"
+                    required
                   />
                   <Button
                     type="button"
@@ -145,6 +158,17 @@ export default async function AddContractPage() {
                     <Upload className="h-4 w-4" />
                     <span>Selecionar Arquivo</span>
                   </Button>
+                  <p id="file-name" className="mt-2 text-sm text-gray-500"></p>
+                  <script
+                    dangerouslySetInnerHTML={{
+                      __html: `
+                    document.getElementById('file').addEventListener('change', function(e) {
+                      const fileName = e.target.files[0]?.name || 'Nenhum arquivo selecionado';
+                      document.getElementById('file-name').textContent = fileName;
+                    });
+                  `,
+                    }}
+                  />
                 </div>
 
                 <div className="space-y-4">
@@ -276,37 +300,58 @@ export default async function AddContractPage() {
                     <Tag className="h-4 w-4" />
                     <span>Campos Dinâmicos</span>
                   </Label>
-                  <div className="p-4 border rounded-lg bg-gray-50">
-                    <p className="text-sm text-gray-500 mb-4">
-                      Defina os campos que serão preenchidos no formulário:
+                  <div className="space-y-4" id="dynamic-fields">
+                    <p className="text-sm text-gray-500">
+                      Defina os campos dinâmicos que serão substituídos no seu
+                      modelo. Use o formato {"{{nome_campo}}"} no seu documento.
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-                        {"{nome_cliente}"}
-                      </div>
-                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-                        {"{cpf}"}
-                      </div>
-                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-                        {"{endereco}"}
-                      </div>
-                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-                        {"{cep}"}
-                      </div>
-                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-                        {"{cidade}"}
-                      </div>
-                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
-                        {"{estado}"}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="field_names[0]"
+                        placeholder="Nome do campo (ex: nome_cliente)"
+                        className="flex-1"
+                      />
+                      <Input
+                        name="field_labels[0]"
+                        placeholder="Rótulo de exibição (ex: Nome do Cliente)"
+                        className="flex-1"
+                      />
                       <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full"
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="flex-shrink-0"
                       >
-                        + Adicionar Campo
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 flex items-center gap-2"
+                      onClick={() => {
+                        const container =
+                          document.getElementById("dynamic-fields");
+                        const fieldCount =
+                          container?.querySelectorAll(
+                            ".flex.items-center.gap-2",
+                          ).length || 0;
+                        const newField = document.createElement("div");
+                        newField.className = "flex items-center gap-2";
+                        newField.innerHTML = `
+                          <input name="field_names[${fieldCount}]" placeholder="Nome do campo (ex: nome_cliente)" class="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                          <input name="field_labels[${fieldCount}]" placeholder="Rótulo de exibição (ex: Nome do Cliente)" class="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                          <button type="button" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-9 w-9 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                          </button>
+                        `;
+                        container?.appendChild(newField);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Adicionar Campo</span>
+                    </Button>
                   </div>
                 </div>
 

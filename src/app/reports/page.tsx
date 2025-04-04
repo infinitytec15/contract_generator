@@ -165,8 +165,83 @@ export default function ReportsPage() {
     : null;
 
   const handleExportCSV = (reportType: string) => {
-    // This will be implemented in a future step
-    console.log(`Exporting ${reportType} report as CSV`);
+    // Format dates for filename
+    const startDateStr = format(date.from, "yyyy-MM-dd");
+    const endDateStr = format(date.to, "yyyy-MM-dd");
+    const filename = `${reportType}_${startDateStr}_to_${endDateStr}.csv`;
+
+    let csvContent = "";
+    let data = [];
+
+    // Prepare data based on report type
+    switch (reportType) {
+      case "contracts-monthly":
+        if (!contractsData?.monthly) return;
+        csvContent = "Month,Count\n";
+        data = contractsData.monthly.map(
+          (item) => `${item.month},${item.count}`,
+        );
+        break;
+
+      case "contracts-list":
+        if (!contractsData?.contracts) return;
+        csvContent = "ID,Name,Client,Status,Created At\n";
+        data = contractsData.contracts.map(
+          (contract) =>
+            `${contract.id},"${contract.name || "Sem nome"}","${contract.client_name || "Cliente não especificado"}",${contract.status},${contract.created_at}`,
+        );
+        break;
+
+      case "clients-monthly":
+        if (!clientsData?.monthly) return;
+        csvContent = "Month,Count\n";
+        data = clientsData.monthly.map((item) => `${item.month},${item.count}`);
+        break;
+
+      case "clients-list":
+        if (!clientsData?.clients) return;
+        csvContent = "ID,Name,Email,Status,Created At\n";
+        data = clientsData.clients.map(
+          (client) =>
+            `${client.id},"${client.name || "Sem nome"}","${client.email || "Email não especificado"}",${client.status},${client.created_at}`,
+        );
+        break;
+
+      case "plan-distribution":
+        if (!plansData?.planDistribution) return;
+        csvContent = "Plan,Count\n";
+        data = plansData.planDistribution.map(
+          (item) => `"${item.plan_name}",${item.count}`,
+        );
+        break;
+
+      case "subscriptions-list":
+        if (!plansData?.subscriptions) return;
+        csvContent = "ID,User ID,Plan,Amount,Status,Created At\n";
+        data = plansData.subscriptions.map(
+          (subscription) =>
+            `${subscription.id},${subscription.user_id || "Não especificado"},"${subscription.plan_name || "Plano não especificado"}",${subscription.amount || 0},${subscription.status},${subscription.created_at}`,
+        );
+        break;
+
+      default:
+        console.error("Unknown report type:", reportType);
+        return;
+    }
+
+    // Combine header and data
+    csvContent += data.join("\n");
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Format date for display
