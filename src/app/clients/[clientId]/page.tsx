@@ -5,6 +5,6 @@ export default function ClientIdRedirect({
 }: {
   params: { clientId: string };
 }) {
-  // Redirect from the old [clientId] route to the new [id] route
-  return redirect(`/clients/${params.clientId}`);
+  // Redirect from the old [clientId] route to the details page directly
+  return redirect(`/clients/${params.clientId}/details`);
 }
