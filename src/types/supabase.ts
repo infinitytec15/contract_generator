@@ -208,58 +208,126 @@ export type Database = {
           },
         ]
       }
+      contract_alerts: {
+        Row: {
+          alert_date: string
+          alert_message: string
+          alert_status: string
+          alert_type: string
+          contract_id: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          alert_date: string
+          alert_message: string
+          alert_status?: string
+          alert_type: string
+          contract_id: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          alert_date?: string
+          alert_message?: string
+          alert_status?: string
+          alert_type?: string
+          contract_id?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_alerts_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
+          adjustment_date: string | null
+          alert_days_before: number | null
+          alert_email: boolean | null
+          alert_sms: boolean | null
+          alert_system: boolean | null
           branch: string | null
           category: string | null
           created_at: string | null
           description: string | null
+          effective_date: string | null
           file_path: string | null
           id: string
           name: string
+          renewal_date: string | null
           signature_data: Json | null
+          signature_date: string | null
           signature_provider: string | null
           signature_status: string | null
           signature_token: string | null
           signed_file_path: string | null
           signed_file_url: string | null
           status: string | null
+          termination_date: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          adjustment_date?: string | null
+          alert_days_before?: number | null
+          alert_email?: boolean | null
+          alert_sms?: boolean | null
+          alert_system?: boolean | null
           branch?: string | null
           category?: string | null
           created_at?: string | null
           description?: string | null
+          effective_date?: string | null
           file_path?: string | null
           id?: string
           name: string
+          renewal_date?: string | null
           signature_data?: Json | null
+          signature_date?: string | null
           signature_provider?: string | null
           signature_status?: string | null
           signature_token?: string | null
           signed_file_path?: string | null
           signed_file_url?: string | null
           status?: string | null
+          termination_date?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          adjustment_date?: string | null
+          alert_days_before?: number | null
+          alert_email?: boolean | null
+          alert_sms?: boolean | null
+          alert_system?: boolean | null
           branch?: string | null
           category?: string | null
           created_at?: string | null
           description?: string | null
+          effective_date?: string | null
           file_path?: string | null
           id?: string
           name?: string
+          renewal_date?: string | null
           signature_data?: Json | null
+          signature_date?: string | null
           signature_provider?: string | null
           signature_status?: string | null
           signature_token?: string | null
           signed_file_path?: string | null
           signed_file_url?: string | null
           status?: string | null
+          termination_date?: string | null
           updated_at?: string | null
           user_id?: string
         }

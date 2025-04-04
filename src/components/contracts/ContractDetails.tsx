@@ -236,6 +236,58 @@ export default function ContractDetails({ contractId }: ContractDetailsProps) {
                 <dd className="text-sm">{formatDate(contract.updated_at)}</dd>
               </div>
 
+              {/* Datas de Gestão de Prazos */}
+              {contract.signature_date && (
+                <div className="flex justify-between">
+                  <dt className="text-sm font-medium text-gray-500">
+                    Data de Assinatura:
+                  </dt>
+                  <dd className="text-sm">
+                    {formatDate(contract.signature_date)}
+                  </dd>
+                </div>
+              )}
+              {contract.effective_date && (
+                <div className="flex justify-between">
+                  <dt className="text-sm font-medium text-gray-500">
+                    Início de Vigência:
+                  </dt>
+                  <dd className="text-sm">
+                    {formatDate(contract.effective_date)}
+                  </dd>
+                </div>
+              )}
+              {contract.termination_date && (
+                <div className="flex justify-between">
+                  <dt className="text-sm font-medium text-gray-500">
+                    Término de Vigência:
+                  </dt>
+                  <dd className="text-sm">
+                    {formatDate(contract.termination_date)}
+                  </dd>
+                </div>
+              )}
+              {contract.renewal_date && (
+                <div className="flex justify-between">
+                  <dt className="text-sm font-medium text-gray-500">
+                    Data de Renovação:
+                  </dt>
+                  <dd className="text-sm">
+                    {formatDate(contract.renewal_date)}
+                  </dd>
+                </div>
+              )}
+              {contract.adjustment_date && (
+                <div className="flex justify-between">
+                  <dt className="text-sm font-medium text-gray-500">
+                    Data de Reajuste:
+                  </dt>
+                  <dd className="text-sm">
+                    {formatDate(contract.adjustment_date)}
+                  </dd>
+                </div>
+              )}
+
               {/* Informações de assinatura */}
               {contract.signature_status && (
                 <div className="pt-2 border-t border-gray-200">
