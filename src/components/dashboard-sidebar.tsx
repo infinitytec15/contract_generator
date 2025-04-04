@@ -72,6 +72,7 @@ export default function DashboardSidebar() {
     { name: "Envios", href: "/sends", icon: Send },
     { name: "Clientes", href: "/clients", icon: Users },
     { name: "Assinaturas", href: "/signatures", icon: PenTool },
+    { name: "Tickets", href: "/tickets", icon: FileText },
     { name: "Planos", href: "/plans", icon: CreditCard },
     { name: "Configurações", href: "/settings", icon: Settings },
   ];
