@@ -20,7 +20,7 @@ import { createClient } from "../../../../../supabase/server";
 export default async function ContractDetailsPage({
   params,
 }: {
-  params: { id: string; id2: string };
+  params: { id: string; contractId: string };
 }) {
   const supabase = await createClient();
 
