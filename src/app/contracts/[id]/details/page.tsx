@@ -13,12 +13,17 @@ import {
   User,
   MapPin,
   FileSignature,
+  Shield,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../../supabase/server";
 import AttachmentList from "@/components/contracts/AttachmentList";
 import CommentSection from "@/components/contracts/CommentSection";
 import ModificationHistory from "@/components/contracts/ModificationHistory";
+import RiskAnalysis from "@/components/contracts/RiskAnalysis";
+import ContractCalendar from "@/components/contracts/ContractCalendar";
+import ContractChatbot from "@/components/contracts/ContractChatbot";
+import ScenarioSimulation from "@/components/contracts/ScenarioSimulation";
 
 export default async function ContractDetailsPage({
   params,
@@ -120,6 +125,10 @@ export default async function ContractDetailsPage({
             <TabsList className="mb-4">
               <TabsTrigger value="details">Detalhes</TabsTrigger>
               <TabsTrigger value="client">Dados do Cliente</TabsTrigger>
+              <TabsTrigger value="risk">Análise de Risco</TabsTrigger>
+              <TabsTrigger value="calendar">Calendário</TabsTrigger>
+              <TabsTrigger value="chatbot">Assistente</TabsTrigger>
+              <TabsTrigger value="simulation">Simulação</TabsTrigger>
               <TabsTrigger value="logs">Logs de Assinatura</TabsTrigger>
               <TabsTrigger value="attachments">Anexos</TabsTrigger>
               <TabsTrigger value="comments">Comentários</TabsTrigger>
@@ -307,6 +316,31 @@ export default async function ContractDetailsPage({
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="risk">
+              <RiskAnalysis contractId={params.id} />
+            </TabsContent>
+
+            <TabsContent value="calendar">
+              <ContractCalendar
+                contractId={params.id}
+                contractName={contract.name}
+              />
+            </TabsContent>
+
+            <TabsContent value="chatbot">
+              <ContractChatbot
+                contractId={params.id}
+                contractName={contract.name}
+              />
+            </TabsContent>
+
+            <TabsContent value="simulation">
+              <ScenarioSimulation
+                contractId={params.id}
+                contractName={contract.name}
+              />
             </TabsContent>
 
             <TabsContent value="logs">
