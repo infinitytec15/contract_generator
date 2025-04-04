@@ -808,6 +808,45 @@ export type Database = {
           },
         ]
       }
+      two_factor_setup: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          secret: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          secret: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          secret?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "two_factor_setup_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -853,6 +892,8 @@ export type Database = {
           subscription_status: string | null
           token_identifier: string
           trial_ends_at: string | null
+          two_factor_enabled: boolean | null
+          two_factor_secret: string | null
           updated_at: string | null
           user_id: string | null
           vault_storage_used: number | null
@@ -868,6 +909,8 @@ export type Database = {
           subscription_status?: string | null
           token_identifier: string
           trial_ends_at?: string | null
+          two_factor_enabled?: boolean | null
+          two_factor_secret?: string | null
           updated_at?: string | null
           user_id?: string | null
           vault_storage_used?: number | null
@@ -883,6 +926,8 @@ export type Database = {
           subscription_status?: string | null
           token_identifier?: string
           trial_ends_at?: string | null
+          two_factor_enabled?: boolean | null
+          two_factor_secret?: string | null
           updated_at?: string | null
           user_id?: string | null
           vault_storage_used?: number | null
