@@ -5,6 +5,6 @@ export default function ClientIdRedirect({
 }: {
   params: { clientId: string };
 }) {
-  // Redirect to the id-based route to consolidate on a single parameter name
+  // Redirect to the clients/id route to consolidate on a single parameter name
   return redirect(`/clients/${params.clientId}`);
 }

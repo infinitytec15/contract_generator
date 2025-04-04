@@ -6,5 +6,5 @@ export default function ContractPage({
   params: { contractId: string };
 }) {
   // Redirect to the details page for this contract
-  redirect(`/contracts/${params.contractId}/details`);
+  return redirect(`/contracts/${params.contractId}/details`);
 }
