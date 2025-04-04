@@ -20,7 +20,7 @@ import { createClient } from "../../../../../supabase/server";
 export default async function ContractDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: { contractId: string };
 }) {
   const supabase = await createClient();
 
@@ -34,7 +34,7 @@ export default async function ContractDetailsPage({
 
   // Mock contract data
   const contract = {
-    id: params.id,
+    id: params.contractId,
     name: "Service Agreement - ABC Corp",
     category: "Service Agreement",
     branch: "Corporate",

@@ -44,6 +44,7 @@ export const signUpAction = async (formData: FormData) => {
 
   if (user) {
     try {
+      // Insert user into users table
       const { error: updateError } = await supabase.from("users").insert({
         id: user.id,
         name: fullName,
@@ -56,6 +57,28 @@ export const signUpAction = async (formData: FormData) => {
 
       if (updateError) {
         console.error("Error updating user profile:", updateError);
+      }
+
+      // Get the client role ID
+      const { data: clientRole } = await supabase
+        .from("roles")
+        .select("id")
+        .eq("name", "client")
+        .single();
+
+      if (clientRole) {
+        // Assign client role to the new user
+        const { error: roleError } = await supabase.from("user_roles").insert({
+          user_id: user.id,
+          role_id: clientRole.id,
+          created_at: new Date().toISOString(),
+        });
+
+        if (roleError) {
+          console.error("Error assigning role to user:", roleError);
+        }
+      } else {
+        console.error("Client role not found");
       }
     } catch (err) {
       console.error("Error in user profile creation:", err);
@@ -252,6 +275,122 @@ export const uploadContractTemplateAction = async (formData: FormData) => {
     return encodedRedirect(
       "error",
       "/contracts/upload",
+      "An unexpected error occurred",
+    );
+  }
+};
+
+// Update contract template action
+export const updateContractTemplateAction = async (formData: FormData) => {
+  const supabase = await createClient();
+
+  // Get form data
+  const templateId = formData.get("templateId")?.toString();
+  const name = formData.get("name")?.toString();
+  const category = formData.get("category")?.toString();
+  const description = formData.get("description")?.toString() || "";
+  const file = formData.get("file") as File | null;
+
+  // Validate required fields
+  if (!templateId || !name || !category) {
+    return encodedRedirect(
+      "error",
+      `/contracts/${templateId}/edit`,
+      "Name and category are required",
+    );
+  }
+
+  try {
+    let filePath = formData.get("current_file_path")?.toString() || "";
+    let fileUrl = formData.get("current_file_url")?.toString() || "";
+
+    // If a new file is uploaded, process it
+    if (file && file.size > 0) {
+      // Delete the old file if it exists
+      if (filePath) {
+        await supabase.storage.from("contracts").remove([filePath]);
+      }
+
+      // Upload the new file
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      filePath = `contract-templates/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("contracts")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("Error uploading template:", uploadError);
+        return encodedRedirect(
+          "error",
+          `/contracts/${templateId}/edit`,
+          "Failed to upload template file",
+        );
+      }
+
+      // Get public URL for the uploaded file
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("contracts").getPublicUrl(filePath);
+
+      fileUrl = publicUrl;
+    }
+
+    // Process dynamic fields
+    const fieldNames = formData
+      .getAll("field_names[]")
+      .map((f) => f.toString());
+    const fieldLabels = formData
+      .getAll("field_labels[]")
+      .map((f) => f.toString());
+
+    const dynamicFields = fieldNames
+      .map((name, index) => ({
+        name: name,
+        label: fieldLabels[index] || name,
+      }))
+      .filter((field) => field.name);
+
+    // Update template record in database
+    const updateData: any = {
+      name,
+      category,
+      description,
+      dynamic_fields: dynamicFields,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only update file info if a new file was uploaded
+    if (file && file.size > 0) {
+      updateData.file_path = filePath;
+      updateData.file_url = fileUrl;
+    }
+
+    const { error: updateError } = await supabase
+      .from("contract_templates")
+      .update(updateData)
+      .eq("id", templateId);
+
+    if (updateError) {
+      console.error("Error updating template record:", updateError);
+      return encodedRedirect(
+        "error",
+        `/contracts/${templateId}/edit`,
+        "Failed to update template information",
+      );
+    }
+
+    return encodedRedirect(
+      "success",
+      `/contracts/${templateId}/edit`,
+      "Template updated successfully",
+    );
+  } catch (err) {
+    console.error("Error in template update process:", err);
+    return encodedRedirect(
+      "error",
+      `/contracts/${templateId}/edit`,
       "An unexpected error occurred",
     );
   }

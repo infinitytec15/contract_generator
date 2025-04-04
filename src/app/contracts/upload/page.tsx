@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileUpload, Upload, Tag, Save, Plus, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../supabase/server";
+import { uploadContractTemplateAction } from "@/app/actions";
 
 export default async function UploadContractPage() {
   const supabase = await createClient();
@@ -36,7 +37,7 @@ export default async function UploadContractPage() {
             </CardHeader>
             <CardContent>
               <form
-                action="/api/upload-contract"
+                action={uploadContractTemplateAction}
                 method="post"
                 encType="multipart/form-data"
                 className="space-y-6"
