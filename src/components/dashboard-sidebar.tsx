@@ -72,7 +72,7 @@ export default function DashboardSidebar() {
     { name: "Envios", href: "/sends", icon: Send },
     { name: "Clientes", href: "/clients", icon: Users },
     { name: "Assinaturas", href: "/signatures", icon: PenTool },
-    { name: "Tickets", href: "/tickets", icon: FileText },
+    { name: "Tickets", href: "/tickets", icon: MessageSquare },
     { name: "Planos", href: "/plans", icon: CreditCard },
     { name: "Configurações", href: "/settings", icon: Settings },
   ];
@@ -81,6 +81,7 @@ export default function DashboardSidebar() {
   const adminMenuItems = [
     { name: "Usuários", href: "/admin/users", icon: UserCog },
     { name: "Funções", href: "/admin/roles", icon: Shield },
+    { name: "Tickets", href: "/admin/tickets", icon: MessageSquare },
   ];
 
   if (isLoading) {
