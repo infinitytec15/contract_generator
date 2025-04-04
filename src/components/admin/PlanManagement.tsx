@@ -53,6 +53,8 @@ type Plan = {
   client_limit: number;
   contract_links_limit: number;
   signature_limit: number;
+  vault_storage_limit: number;
+  trial_days: number;
   is_active: boolean;
   created_at: string;
 };
@@ -88,6 +90,8 @@ export default function PlanManagement() {
   const [newClientLimit, setNewClientLimit] = useState("");
   const [newContractLinksLimit, setNewContractLinksLimit] = useState("");
   const [newSignatureLimit, setNewSignatureLimit] = useState("");
+  const [newVaultStorageLimit, setNewVaultStorageLimit] = useState("");
+  const [newTrialDays, setNewTrialDays] = useState("7");
   const [newPlanIsActive, setNewPlanIsActive] = useState(true);
 
   const supabase = createClient();
@@ -145,6 +149,10 @@ export default function PlanManagement() {
           ? parseInt(newContractLinksLimit)
           : 20,
         signature_limit: newSignatureLimit ? parseInt(newSignatureLimit) : 20,
+        vault_storage_limit: newVaultStorageLimit
+          ? parseInt(newVaultStorageLimit)
+          : 104857600, // 100MB default
+        trial_days: newTrialDays ? parseInt(newTrialDays) : 7,
         is_active: newPlanIsActive,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -197,6 +205,10 @@ export default function PlanManagement() {
             ? parseInt(newContractLinksLimit)
             : 20,
           signature_limit: newSignatureLimit ? parseInt(newSignatureLimit) : 20,
+          vault_storage_limit: newVaultStorageLimit
+            ? parseInt(newVaultStorageLimit)
+            : 104857600, // 100MB default
+          trial_days: newTrialDays ? parseInt(newTrialDays) : 7,
           is_active: newPlanIsActive,
           updated_at: new Date().toISOString(),
         })
@@ -263,6 +275,10 @@ export default function PlanManagement() {
     setNewClientLimit(plan.client_limit.toString());
     setNewContractLinksLimit(plan.contract_links_limit.toString());
     setNewSignatureLimit(plan.signature_limit.toString());
+    setNewVaultStorageLimit(
+      plan.vault_storage_limit?.toString() || "104857600",
+    );
+    setNewTrialDays(plan.trial_days?.toString() || "7");
     setNewPlanIsActive(plan.is_active);
     setIsEditDialogOpen(true);
   };
@@ -282,6 +298,8 @@ export default function PlanManagement() {
     setNewClientLimit("10");
     setNewContractLinksLimit("20");
     setNewSignatureLimit("20");
+    setNewVaultStorageLimit("104857600"); // 100MB default
+    setNewTrialDays("7");
     setNewPlanIsActive(true);
   };
 
@@ -297,6 +315,13 @@ export default function PlanManagement() {
       style: "currency",
       currency: "BRL",
     }).format(value);
+  };
+
+  const formatStorage = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
+    else return (bytes / 1073741824).toFixed(1) + " GB";
   };
 
   const getBillingCycleLabel = (cycle: string) => {
@@ -460,6 +485,31 @@ export default function PlanManagement() {
                     onChange={(e) => setNewSignatureLimit(e.target.value)}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vaultStorageLimit">
+                    Limite de Armazenamento do Cofre (bytes)
+                  </Label>
+                  <Input
+                    id="vaultStorageLimit"
+                    type="number"
+                    placeholder="104857600"
+                    value={newVaultStorageLimit}
+                    onChange={(e) => setNewVaultStorageLimit(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    100MB = 104857600 bytes, 1GB = 1073741824 bytes
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="trialDays">Dias de Teste Gratuito</Label>
+                  <Input
+                    id="trialDays"
+                    type="number"
+                    placeholder="7"
+                    value={newTrialDays}
+                    onChange={(e) => setNewTrialDays(e.target.value)}
+                  />
+                </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label>Recursos Incluídos</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 border rounded-md p-3">
@@ -532,6 +582,11 @@ export default function PlanManagement() {
                         <div>Clientes: {plan.client_limit}</div>
                         <div>Links: {plan.contract_links_limit}</div>
                         <div>Assinaturas: {plan.signature_limit}</div>
+                        <div>
+                          Armazenamento:{" "}
+                          {formatStorage(plan.vault_storage_limit || 104857600)}
+                        </div>
+                        <div>Teste Gratuito: {plan.trial_days || 7} dias</div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -683,6 +738,31 @@ export default function PlanManagement() {
                 placeholder="20"
                 value={newSignatureLimit}
                 onChange={(e) => setNewSignatureLimit(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editVaultStorageLimit">
+                Limite de Armazenamento do Cofre (bytes)
+              </Label>
+              <Input
+                id="editVaultStorageLimit"
+                type="number"
+                placeholder="104857600"
+                value={newVaultStorageLimit}
+                onChange={(e) => setNewVaultStorageLimit(e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                100MB = 104857600 bytes, 1GB = 1073741824 bytes
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editTrialDays">Dias de Teste Gratuito</Label>
+              <Input
+                id="editTrialDays"
+                type="number"
+                placeholder="7"
+                value={newTrialDays}
+                onChange={(e) => setNewTrialDays(e.target.value)}
               />
             </div>
             <div className="space-y-2 md:col-span-2">

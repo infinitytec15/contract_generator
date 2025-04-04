@@ -14,6 +14,8 @@ import {
   Settings,
   UserCog,
   Shield,
+  Lock,
+  MessageSquare,
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
 
@@ -72,6 +74,7 @@ export default function DashboardSidebar() {
     { name: "Envios", href: "/sends", icon: Send },
     { name: "Clientes", href: "/clients", icon: Users },
     { name: "Assinaturas", href: "/signatures", icon: PenTool },
+    { name: "Cofre", href: "/vault", icon: Lock },
     { name: "Tickets", href: "/tickets", icon: MessageSquare },
     { name: "Planos", href: "/plans", icon: CreditCard },
     { name: "Configurações", href: "/settings", icon: Settings },

@@ -348,7 +348,9 @@ export type Database = {
           is_active: boolean | null
           name: string
           price: number
+          trial_days: number | null
           updated_at: string | null
+          vault_storage_limit: number | null
         }
         Insert: {
           billing_cycle: string
@@ -359,7 +361,9 @@ export type Database = {
           is_active?: boolean | null
           name: string
           price: number
+          trial_days?: number | null
           updated_at?: string | null
+          vault_storage_limit?: number | null
         }
         Update: {
           billing_cycle?: string
@@ -370,7 +374,9 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           price?: number
+          trial_days?: number | null
           updated_at?: string | null
+          vault_storage_limit?: number | null
         }
         Relationships: []
       }
@@ -522,9 +528,12 @@ export type Database = {
           id: string
           image: string | null
           name: string | null
+          subscription_status: string | null
           token_identifier: string
+          trial_ends_at: string | null
           updated_at: string | null
           user_id: string | null
+          vault_storage_used: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -534,9 +543,12 @@ export type Database = {
           id: string
           image?: string | null
           name?: string | null
+          subscription_status?: string | null
           token_identifier: string
+          trial_ends_at?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vault_storage_used?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -546,11 +558,64 @@ export type Database = {
           id?: string
           image?: string | null
           name?: string | null
+          subscription_status?: string | null
           token_identifier?: string
+          trial_ends_at?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vault_storage_used?: number | null
         }
         Relationships: []
+      }
+      vault_documents: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          file_path: string
+          file_size: number
+          file_type: string | null
+          file_url: string
+          id: string
+          is_critical: boolean | null
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          file_path: string
+          file_size: number
+          file_type?: string | null
+          file_url: string
+          id?: string
+          is_critical?: boolean | null
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          file_path?: string
+          file_size?: number
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          is_critical?: boolean | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vault_documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

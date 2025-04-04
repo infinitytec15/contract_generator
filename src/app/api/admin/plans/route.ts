@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
       client_limit,
       contract_links_limit,
       signature_limit,
+      vault_storage_limit,
+      trial_days,
       is_active,
     } = body;
 
@@ -120,6 +122,8 @@ export async function POST(request: NextRequest) {
         client_limit: client_limit || 10,
         contract_links_limit: contract_links_limit || 20,
         signature_limit: signature_limit || 20,
+        vault_storage_limit: vault_storage_limit || 104857600, // 100MB default
+        trial_days: trial_days || 7,
         is_active: is_active !== undefined ? is_active : true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -189,6 +193,8 @@ export async function PUT(request: NextRequest) {
       client_limit,
       contract_links_limit,
       signature_limit,
+      vault_storage_limit,
+      trial_days,
       is_active,
     } = body;
 
@@ -216,6 +222,9 @@ export async function PUT(request: NextRequest) {
       updateData.contract_links_limit = contract_links_limit;
     if (signature_limit !== undefined)
       updateData.signature_limit = signature_limit;
+    if (vault_storage_limit !== undefined)
+      updateData.vault_storage_limit = vault_storage_limit;
+    if (trial_days !== undefined) updateData.trial_days = trial_days;
     if (is_active !== undefined) updateData.is_active = is_active;
 
     const { data: plan, error } = await supabase
