@@ -18,6 +18,10 @@ interface ScenarioSimulationProps {
   contractName?: string;
 }
 
+/**
+ * ScenarioSimulation component allows users to simulate different scenarios
+ * for contract renewal and termination.
+ */
 export default function ScenarioSimulation({
   contractId,
   contractName = "Contrato",
@@ -29,9 +33,14 @@ export default function ScenarioSimulation({
   const [terminationResults, setTerminationResults] = useState<any>(null);
 
   useEffect(() => {
-    fetchContractData();
+    if (contractId) {
+      fetchContractData();
+    }
   }, [contractId]);
 
+  /**
+   * Fetches contract data from the API or creates mock data if needed
+   */
   const fetchContractData = async () => {
     try {
       setLoading(true);
@@ -49,8 +58,8 @@ export default function ScenarioSimulation({
         throw new Error(error.message);
       }
 
-      // For demo purposes, let's create some mock data if needed
-      const mockContract: ContractData = {
+      // Create contract data object with fallbacks to mock data if needed
+      const contractData: ContractData = {
         id: contractId,
         name: data?.name || contractName,
         start_date:
@@ -71,7 +80,7 @@ export default function ScenarioSimulation({
         penalty_percentage: data?.penalty_percentage || 20,
       };
 
-      setContract(mockContract);
+      setContract(contractData);
     } catch (err: any) {
       console.error("Error fetching contract data:", err);
       setError(err.message || "Erro ao carregar dados do contrato");
@@ -80,8 +89,22 @@ export default function ScenarioSimulation({
     }
   };
 
+  /**
+   * Handles the simulation results for contract renewal
+   */
+  const handleRenewalSimulation = (results: any) => {
+    setRenewalResults(results);
+  };
+
+  /**
+   * Handles the simulation results for contract termination
+   */
+  const handleTerminationSimulation = (results: any) => {
+    setTerminationResults(results);
+  };
+
   return (
-    <Card className="h-full">
+    <Card className="h-full" data-testid="scenario-simulation-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calculator className="h-5 w-5 text-blue-600" />
@@ -90,25 +113,35 @@ export default function ScenarioSimulation({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="flex justify-center items-center py-12">
+          <div
+            className="flex justify-center items-center py-12"
+            data-testid="loading-spinner"
+          >
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : error ? (
-          <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-4">
+          <div
+            className="bg-red-50 text-red-700 p-4 rounded-lg mb-4"
+            data-testid="error-message"
+          >
             {error}
           </div>
         ) : contract ? (
-          <Tabs defaultValue="renewal">
+          <Tabs defaultValue="renewal" data-testid="simulation-tabs">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="renewal">Renovação</TabsTrigger>
-              <TabsTrigger value="termination">Rescisão</TabsTrigger>
+              <TabsTrigger value="renewal" data-testid="renewal-tab">
+                Renovação
+              </TabsTrigger>
+              <TabsTrigger value="termination" data-testid="termination-tab">
+                Rescisão
+              </TabsTrigger>
             </TabsList>
 
             {/* Renewal Simulation Tab */}
             <TabsContent value="renewal" className="space-y-4 mt-4">
               <RenewalSimulation
                 contract={contract}
-                onSimulate={setRenewalResults}
+                onSimulate={handleRenewalSimulation}
               />
               <RenewalResults results={renewalResults} />
             </TabsContent>
@@ -117,13 +150,13 @@ export default function ScenarioSimulation({
             <TabsContent value="termination" className="space-y-4 mt-4">
               <TerminationSimulation
                 contract={contract}
-                onSimulate={setTerminationResults}
+                onSimulate={handleTerminationSimulation}
               />
               <TerminationResults results={terminationResults} />
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="text-center py-8">
+          <div className="text-center py-8" data-testid="no-data-message">
             <p>Não foi possível carregar os dados do contrato.</p>
           </div>
         )}
