@@ -68,19 +68,38 @@ export default function DashboardSidebar() {
     fetchUserRole();
   }, []);
 
-  const menuItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Contratos", href: "/contracts", icon: FileText },
-    { name: "Formulários", href: "/forms", icon: FormInput },
-    { name: "Envios", href: "/sends", icon: Send },
-    { name: "Clientes", href: "/clients", icon: Users },
-    { name: "Assinaturas", href: "/signatures", icon: PenTool },
-    { name: "Cofre", href: "/vault", icon: Lock },
-    { name: "Tickets", href: "/tickets", icon: MessageSquare },
-    { name: "Relatórios", href: "/reports", icon: BarChart3 },
-    { name: "Planos", href: "/plans", icon: CreditCard },
-    { name: "Configurações", href: "/settings", icon: Settings },
-  ];
+  // Define menu items based on user role
+  const getMenuItems = () => {
+    const baseMenuItems = [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Contratos", href: "/contracts", icon: FileText },
+      { name: "Formulários", href: "/forms", icon: FormInput },
+      { name: "Envios", href: "/sends", icon: Send },
+      { name: "Clientes", href: "/clients", icon: Users },
+      { name: "Assinaturas", href: "/signatures", icon: PenTool },
+      { name: "Cofre", href: "/vault", icon: Lock },
+      { name: "Tickets", href: "/tickets", icon: MessageSquare },
+    ];
+
+    // Add reports menu item for admin and super_admin roles
+    if (userRole === "admin" || userRole === "super_admin") {
+      baseMenuItems.push({
+        name: "Relatórios",
+        href: "/reports",
+        icon: BarChart3,
+      });
+    }
+
+    // Add plans menu item for all users
+    baseMenuItems.push({ name: "Planos", href: "/plans", icon: CreditCard });
+    baseMenuItems.push({
+      name: "Configurações",
+      href: "/settings",
+      icon: Settings,
+    });
+
+    return baseMenuItems;
+  };
 
   // Admin menu items only visible to super_admin
   const adminMenuItems = [
@@ -108,6 +127,8 @@ export default function DashboardSidebar() {
       </aside>
     );
   }
+
+  const menuItems = getMenuItems();
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-white shadow-md pt-16">
