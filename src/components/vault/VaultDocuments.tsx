@@ -35,14 +35,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertCircle,
+  Calendar,
   Download,
+  Eye,
   FileText,
+  FolderTree,
+  History,
   Lock,
   Plus,
+  Search,
+  Share2,
   Shield,
+  Tag,
   Trash2,
 } from "lucide-react";
 import FormMessage from "@/components/form-message";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
 
 type VaultDocument = {
   id: string;
@@ -54,6 +63,13 @@ type VaultDocument = {
   file_type: string | null;
   is_critical: boolean;
   created_at: string;
+  document_type?: string;
+  tags?: string[];
+  extracted_text?: string;
+  expiration_date?: string;
+  folder_path?: string;
+  ocr_processed?: boolean;
+  classification_processed?: boolean;
 };
 
 type UserPlan = {
@@ -67,10 +83,14 @@ export default function VaultDocuments() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isTimelineView, setIsTimelineView] = useState(false);
   const [selectedDocument, setSelectedDocument] =
     useState<VaultDocument | null>(null);
   const [userPlan, setUserPlan] = useState<UserPlan | null>(null);
   const [storageUsed, setStorageUsed] = useState(0);
+  const [activeTab, setActiveTab] = useState("all");
+  const [folders, setFolders] = useState<string[]>([]);
 
   // Form states
   const [newDocumentName, setNewDocumentName] = useState("");
@@ -85,6 +105,20 @@ export default function VaultDocuments() {
     fetchDocuments();
     fetchUserPlan();
   }, []);
+  
+  useEffect(() => {
+    if (documents.length > 0) {
+      // Extract unique folders from documents
+      const uniqueFolders = Array.from(
+        new Set(
+          documents
+            .filter((doc) => doc.folder_path)
+            .map((doc) => doc.folder_path)
+        )
+      );
+      setFolders(uniqueFolders as string[]);
+    }
+  }, [documents]);
 
   const fetchDocuments = async () => {
     try {
@@ -204,7 +238,7 @@ export default function VaultDocuments() {
       } = supabase.storage.from("vault").getPublicUrl(filePath);
 
       // Create document record in database
-      const { error: insertError } = await supabase
+      const { data: insertedDoc, error: insertError } = await supabase
         .from("vault_documents")
         .insert({
           name: newDocumentName,
@@ -216,7 +250,9 @@ export default function VaultDocuments() {
           is_critical: newDocumentIsCritical,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
@@ -232,6 +268,26 @@ export default function VaultDocuments() {
             updated_at: new Date().toISOString(),
           })
           .eq("id", user.id);
+      }
+
+      // Process document with OCR and classification
+      if (insertedDoc) {
+        try {
+          // Call the edge function to process the document
+          const { error: processError } = await supabase.functions.invoke(
+            "process-document",
+            {
+              body: { documentId: insertedDoc.id },
+            }
+          );
+
+          if (processError) {
+            console.error("Error processing document:", processError);
+          }
+        } catch (processError) {
+          console.error("Error calling document processing:", processError);
+          // Continue even if processing fails
+        }
       }
 
       setSuccess("Documento adicionado com sucesso");
@@ -299,6 +355,43 @@ export default function VaultDocuments() {
     setIsDeleteDialogOpen(true);
   };
 
+  const openDetailsDialog = (document: VaultDocument) => {
+    setSelectedDocument(document);
+    setIsDetailsDialogOpen(true);
+    
+    // Log document view
+    logDocumentAccess(document.id, 'view');
+  };
+  
+  const logDocumentAccess = async (documentId: string, action: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      await supabase.from('document_access_logs').insert({
+        document_id: documentId,
+        user_id: user.id,
+        action: action,
+        ip_address: 'client-side', // In a real app, you'd get this from the server
+        user_agent: navigator.userAgent
+      });
+    } catch (error) {
+      console.error('Error logging document access:', error);
+    }
+  };
+  
+  const handleDownloadDocument = async (document: VaultDocument) => {
+    try {
+      // Log document download
+      await logDocumentAccess(document.id, 'download');
+      
+      // Open the document URL in a new tab
+      window.open(document.file_url, '_blank');
+    } catch (error) {
+      console.error('Error downloading document:', error);
+    }
+  };
+
   const resetForm = () => {
     setNewDocumentName("");
     setNewDocumentDescription("");
@@ -349,16 +442,35 @@ export default function VaultDocuments() {
               Armazene documentos importantes com segurança
             </CardDescription>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                className="flex items-center gap-2"
-                disabled={!userPlan || getStoragePercentage() >= 100}
-              >
-                <Plus className="h-4 w-4" />
-                <span>Adicionar Documento</span>
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTimelineView(!isTimelineView)}
+              className="flex items-center gap-1"
+            >
+              {isTimelineView ? (
+                <>
+                  <FileText className="h-4 w-4" />
+                  <span>Visualização em Lista</span>
+                </>
+              ) : (
+                <>
+                  <History className="h-4 w-4" />
+                  <span>Visualização em Timeline</span>
+                </>
+              )}
+            </Button>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  className="flex items-center gap-2"
+                  disabled={!userPlan || getStoragePercentage() >= 100}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Adicionar Documento</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Documento</DialogTitle>
@@ -451,78 +563,172 @@ export default function VaultDocuments() {
             <Progress value={getStoragePercentage()} className="h-2" />
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Tamanho</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data de Upload</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {documents.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-4 text-gray-500"
-                  >
-                    Nenhum documento encontrado no cofre
-                  </TableCell>
-                </TableRow>
-              ) : (
-                documents.map((document) => (
-                  <TableRow key={document.id}>
-                    <TableCell className="font-medium flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      {document.name}
-                    </TableCell>
-                    <TableCell>
-                      {document.file_type || "Desconhecido"}
-                    </TableCell>
-                    <TableCell>{formatFileSize(document.file_size)}</TableCell>
-                    <TableCell>
-                      {document.is_critical ? (
-                        <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1 w-fit">
-                          <Lock className="h-3 w-3" />
-                          Crítico
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-green-100 text-green-800 w-fit">
-                          Seguro
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(document.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            window.open(document.file_url, "_blank")
-                          }
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openDeleteDialog(document)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+          <Tabs defaultValue="all" className="mb-6">
+            <TabsList>
+              <TabsTrigger value="all" onClick={() => setActiveTab("all")}>Todos</TabsTrigger>
+              <TabsTrigger value="folders" onClick={() => setActiveTab("folders")}>Pastas</TabsTrigger>
+              {folders.length > 0 && folders.slice(0, 3).map((folder, index) => (
+                <TabsTrigger 
+                  key={index} 
+                  value={folder || ""}
+                  onClick={() => setActiveTab(folder || "")}
+                >
+                  {folder?.split('/').pop() || "Sem pasta"}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {isTimelineView ? (
+            <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:w-0.5 before:-translate-x-1/2 before:bg-gray-200 before:content-['']">
+              {documents
+                .filter(doc => activeTab === "all" || doc.folder_path === activeTab)
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .map((document, index) => (
+                  <div key={document.id} className="relative pl-6">
+                    <div className="flex items-center">
+                      <div className="absolute left-0 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow border border-gray-200">
+                        <FileText className="h-5 w-5 text-blue-500" />
                       </div>
+                      <div className="grow ml-4 p-4 bg-white rounded-lg shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium">{document.name}</h3>
+                          <div className="flex items-center gap-1">
+                            {document.is_critical && (
+                              <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1">
+                                <Lock className="h-3 w-3" />
+                                Crítico
+                              </Badge>
+                            )}
+                            {document.document_type && (
+                              <Badge className="bg-blue-100 text-blue-800">
+                                {document.document_type}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {document.description || "Sem descrição"}
+                        </p>
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="text-sm text-gray-500">
+                            {new Date(document.created_at).toLocaleDateString()} às {new Date(document.created_at).toLocaleTimeString()}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDetailsDialog(document)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadDocument(document)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDeleteDialog(document)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Tamanho</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data de Upload</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {documents.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-4 text-gray-500"
+                    >
+                      Nenhum documento encontrado no cofre
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  documents
+                    .filter(doc => activeTab === "all" || doc.folder_path === activeTab)
+                    .map((document) => (
+                      <TableRow key={document.id}>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          {document.name}
+                          {document.document_type && (
+                            <Badge className="ml-2 bg-blue-100 text-blue-800">
+                              {document.document_type}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {document.file_type || "Desconhecido"}
+                        </TableCell>
+                        <TableCell>{formatFileSize(document.file_size)}</TableCell>
+                        <TableCell>
+                          {document.is_critical ? (
+                            <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1 w-fit">
+                              <Lock className="h-3 w-3" />
+                              Crítico
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-800 w-fit">
+                              Seguro
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(document.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDetailsDialog(document)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadDocument(document)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteDialog(document)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -571,6 +777,124 @@ export default function VaultDocuments() {
               Excluir Documento
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          {selectedDocument && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-xl">{selectedDocument.name}</DialogTitle>
+                  {selectedDocument.document_type && (
+                    <Badge className="bg-blue-100 text-blue-800">
+                      {selectedDocument.document_type}
+                    </Badge>
+                  )}
+                </div>
+                <DialogDescription>
+                  Detalhes do documento e informações extraídas
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">Informações Básicas</h3>
+                    <div className="bg-gray-50 p-3 rounded-md space-y-2">
+                      {selectedDocument.description && (
+                        <p className="text-sm">
+                          <span className="font-medium">Descrição:</span> {selectedDocument.description}
+                        </p>
+                      )}
+                      <p className="text-sm">
+                        <span className="font-medium">Tipo de Arquivo:</span> {selectedDocument.file_type || "Desconhecido"}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Tamanho:</span> {formatFileSize(selectedDocument.file_size)}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Data de Upload:</span> {new Date(selectedDocument.created_at).toLocaleDateString()}
+                      </p>
+                      {selectedDocument.folder_path && (
+                        <p className="text-sm flex items-center gap-1">
+                          <span className="font-medium">Pasta:</span>
+                          <FolderTree className="h-3 w-3 text-gray-500" />
+                          {selectedDocument.folder_path}
+                        </p>
+                      )}
+                      {selectedDocument.expiration_date && (
+                        <p className="text-sm flex items-center gap-1">
+                          <span className="font-medium">Expira em:</span>
+                          <Calendar className="h-3 w-3 text-gray-500" />
+                          {new Date(selectedDocument.expiration_date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {selectedDocument.tags && selectedDocument.tags.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Tags</h3>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedDocument.tags.map((tag, index) => (
+                          <Badge key={index} className="bg-gray-100 text-gray-800 flex items-center gap-1">
+                            <Tag className="h-3 w-3" />
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => handleDownloadDocument(selectedDocument)}
+                      className="flex items-center gap-1"
+                    >
+                      <Download className="h-4 w-4" />
+                      Baixar Documento
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Compartilhar
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  {selectedDocument.extracted_text && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-1 flex items-center gap-1">
+                        <Search className="h-4 w-4" />
+                        Texto Extraído (OCR)
+                      </h3>
+                      <div className="bg-gray-50 p-3 rounded-md">
+                        <pre className="text-xs whitespace-pre-wrap">{selectedDocument.extracted_text}</pre>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {selectedDocument.is_critical && (
+                    <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                      <div className="flex items-center gap-2 text-amber-700">
+                        <Shield className="h-5 w-5" />
+                        <h3 className="font-medium">Documento Crítico</h3>
+                      </div>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Este documento está marcado como crítico e possui proteções adicionais.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
