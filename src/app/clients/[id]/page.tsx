@@ -1,74 +1,59 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { createClient } from "../../../../supabase/client";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { createClient } from "../../../supabase/server";
+import { redirect } from "next/navigation";
+import DashboardHeader from "@/components/dashboard-header";
+import DashboardSidebar from "@/components/dashboard-sidebar";
 import ClientDetails from "@/components/clients/ClientDetails";
 
-export default function ClientDetailsPage({
+export default async function ClientDetailsPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const [client, setClient] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const supabase = await createClient();
 
-  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    async function fetchClient() {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("clients")
-          .select("*")
-          .eq("id", params.id)
-          .single();
-
-        if (error) throw error;
-        setClient(data);
-      } catch (error: any) {
-        console.error("Error fetching client:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchClient();
-  }, [params.id]);
-
-  if (loading) {
-    return <div className="p-8">Carregando detalhes do cliente...</div>;
+  if (!user) {
+    return redirect("/login");
   }
 
-  if (error) {
-    return <div className="p-8 text-red-500">Erro: {error}</div>;
-  }
+  // Check if user has admin or super_admin role
+  const { data: userRoles } = await supabase
+    .from("user_roles")
+    .select(
+      `
+      role_id,
+      roles(name)
+    `,
+    )
+    .eq("user_id", user.id);
+
+  const isAdmin = userRoles?.some(
+    (ur) => ur.roles?.name === "super_admin" || ur.roles?.name === "admin",
+  );
+
+  // Fetch client data
+  const { data: client } = await supabase
+    .from("clients")
+    .select("*, plans:plan_id(*)")
+    .eq("id", params.id)
+    .single();
 
   if (!client) {
-    return <div className="p-8">Cliente não encontrado</div>;
+    return redirect("/clients");
   }
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <Link href="/clients">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar para Clientes
-          </Button>
-        </Link>
-      </div>
-
-      <ClientDetails client={client} />
-    </div>
+    <>
+      <DashboardHeader />
+      <DashboardSidebar />
+      <main className="p-4 sm:ml-64 pt-20">
+        <div className="p-4">
+          <ClientDetails client={client} isAdmin={isAdmin} userId={user.id} />
+        </div>
+      </main>
+    </>
   );
 }
