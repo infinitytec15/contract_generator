@@ -8,7 +8,7 @@ import { FileSignature, ArrowRight, Download, Loader2 } from "lucide-react";
 export default function ContractPreviewPage({
   params,
 }: {
-  params: { contractId: string };
+  params: { id: string };
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -16,7 +16,7 @@ export default function ContractPreviewPage({
     setLoading(true);
     // Simulate redirect to signature platform
     setTimeout(() => {
-      window.location.href = `/public/signature/${params.contractId}`;
+      window.location.href = `/public/signature/${params.id}`;
     }, 1500);
   };
 
@@ -43,9 +43,7 @@ export default function ContractPreviewPage({
                 <h2 className="text-xl font-bold uppercase">
                   CONTRATO DE PRESTAÇÃO DE SERVIÇOS
                 </h2>
-                <p className="text-sm text-gray-500 mt-2">
-                  Nº {params.contractId}
-                </p>
+                <p className="text-sm text-gray-500 mt-2">Nº {params.id}</p>
               </div>
 
               <div className="space-y-4 text-sm">

@@ -11,11 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-export default function SignaturePage({
-  params,
-}: {
-  params: { contractId: string };
-}) {
+export default function SignaturePage({ params }: { params: { id: string } }) {
   const [status, setStatus] = useState<"loading" | "signing" | "success">(
     "loading",
   );
@@ -77,7 +73,7 @@ export default function SignaturePage({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Número:</span>
-                  <span className="text-sm">{params.contractId}</span>
+                  <span className="text-sm">{params.id}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
@@ -152,7 +148,7 @@ export default function SignaturePage({
                   Plataforma de Assinatura Digital
                 </h2>
                 <p className="text-sm text-gray-500 mt-2">
-                  Contrato de Prestação de Serviços - Nº {params.contractId}
+                  Contrato de Prestação de Serviços - Nº {params.id}
                 </p>
               </div>
 

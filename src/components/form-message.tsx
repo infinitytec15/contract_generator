@@ -1,40 +1,45 @@
-export type Message =
-  | { success: string }
-  | { error: string }
-  | { message: string };
+"use client";
 
-export function FormMessage({ message }: { message: Message }) {
-  return (
-    <div className="flex flex-col gap-2 w-full max-w-md text-sm">
-      {"success" in message && (
-        <div className="text-green-500 border-l-2 px-4">{message.success}</div>
-      )}
-      {"error" in message && (
-        <div className="text-red-500 border-l-2 px-4">{message.error}</div>
-      )}
-      {"message" in message && (
-        <div className="text-foreground border-l-2 px-4">{message.message}</div>
-      )}
-    </div>
-  );
+import { cn } from "@/lib/utils";
+
+export type Message =
+    | { success: string }
+    | { error: string }
+    | { message: string };
+
+interface FormMessageProps {
+    message: Message | null;
+    className?: string;
 }
 
-export default function FormMessage({
-  type,
-  message,
-  className,
-}: {
-  type: "error" | "success";
-  message: string;
-  className?: string;
-}) {
-  if (!message) return null;
+export default function FormMessage({ message, className }: FormMessageProps) {
+    if (!message) return null;
 
-  return (
-    <div
-      className={`p-4 rounded-md flex items-start gap-3 ${type === "error" ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"} ${className || ""}`}
-    >
-      <div className="text-sm">{message}</div>
-    </div>
-  );
+    const isSuccess = "success" in message;
+    const isError = "error" in message;
+    const isNeutral = "message" in message;
+
+    const text = isSuccess
+        ? message.success
+        : isError
+            ? message.error
+            : message.message;
+
+    const baseStyle = isSuccess
+        ? "bg-green-50 text-green-700"
+        : isError
+            ? "bg-red-50 text-red-700"
+            : "bg-gray-50 text-gray-800";
+
+    return (
+        <div
+            className={cn(
+                "p-4 rounded-md flex items-start gap-3 border",
+                baseStyle,
+                className
+            )}
+        >
+            <div className="text-sm">{text}</div>
+        </div>
+    );
 }

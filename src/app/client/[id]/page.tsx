@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 export default function ClientIdRedirect({
   params,
 }: {
-  params: { id: string };
+  params: { clientId: string };
 }) {
-  // Redirect to the clients/id route
-  return redirect(`/clients/${params.id}`);
+  // Redirect to the clients route with standardized parameter
+  return redirect(`/clients/${params.clientId}`);
 }
