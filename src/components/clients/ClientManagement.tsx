@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "../../../supabase/client";
-import { useRouter } from "next/navigation";
+import FormMessage from "@/components/form-message";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,14 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -39,20 +28,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import FormMessage from "@/components/form-message";
 import {
-  UserPlus,
-  Eye,
-  Pencil,
-  Trash2,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Ban,
-  Search,
-  RefreshCw,
-  UserCheck,
-  Filter,
   Download,
+  Eye,
+  Filter,
+  RefreshCw,
+  Search,
+  Trash2,
+  UserCheck,
+  UserPlus
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "../../../supabase/client";
 import { ClientChart } from "./ClientChart";
 
 type Client = {
@@ -430,7 +429,7 @@ export default function ClientManagement({
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `clientes_${new Date().toISOString().split("T")[0]}.csv`,
+      `clientes_${new Date().toISOString().split("T")[0]}.csv`
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
@@ -456,10 +455,8 @@ export default function ClientManagement({
 
   return (
     <>
-      {error && <FormMessage type="error" message={error} className="mb-4" />}
-      {success && (
-        <FormMessage type="success" message={success} className="mb-4" />
-      )}
+      {error && <FormMessage message={{ error }} className="mb-4" />}
+      {success && <FormMessage message={{ success }} className="mb-4" />}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
@@ -484,7 +481,7 @@ export default function ClientManagement({
               {Math.round(
                 (clients.filter((c) => c.status === "active").length /
                   clients.length) *
-                  100,
+                  100
               ) || 0}
               % do total
             </p>
@@ -503,7 +500,7 @@ export default function ClientManagement({
               {Math.round(
                 (clients.filter((c) => c.payment_status === "overdue").length /
                   clients.length) *
-                  100,
+                  100
               ) || 0}
               % do total
             </p>
@@ -935,7 +932,7 @@ function ClientsTable({
                   <Badge
                     variant="outline"
                     className={getPaymentStatusBadgeColor(
-                      client.payment_status,
+                      client.payment_status
                     )}
                   >
                     {getPaymentStatusLabel(client.payment_status)}
