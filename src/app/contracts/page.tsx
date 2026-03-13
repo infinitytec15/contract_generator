@@ -1,7 +1,14 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/auth";
+// import { createClient } from "@/utils/auth";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -10,17 +17,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Plus } from "lucide-react";
+import { createClient } from "../../../supabase/server";
 
 export default async function ContractsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
